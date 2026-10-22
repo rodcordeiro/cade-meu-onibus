@@ -1,0 +1,12 @@
+{
+  "capturedAt": "2026-10-22T18:50:55.000Z",
+  "request": {
+    "method": "GET",
+    "path": "/Previsao/Parada?codigoParada=abc"
+  },
+  "status": 400,
+  "elapsedMs": 19,
+  "body": {
+    "Message": "The request is invalid."
+  }
+}

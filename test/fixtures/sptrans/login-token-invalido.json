@@ -1,0 +1,10 @@
+{
+  "capturedAt": "2026-10-22T18:50:54.000Z",
+  "request": {
+    "method": "POST",
+    "path": "/Login/Autenticar?token=<redacted>"
+  },
+  "status": 200,
+  "elapsedMs": 46,
+  "body": false
+}

@@ -1,0 +1,12 @@
+{
+  "capturedAt": "2026-10-22T18:50:54.000Z",
+  "request": {
+    "method": "GET",
+    "path": "/Previsao/Parada?codigoParada=1"
+  },
+  "status": 401,
+  "elapsedMs": 301,
+  "body": {
+    "Message": "Authorization has been denied for this request."
+  }
+}

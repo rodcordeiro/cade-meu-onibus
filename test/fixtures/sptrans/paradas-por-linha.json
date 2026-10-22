@@ -1,0 +1,53 @@
+{
+  "capturedAt": "2026-10-22T18:50:54.000Z",
+  "request": {
+    "method": "GET",
+    "path": "/Parada/BuscarParadasPorLinha?codigoLinha=609"
+  },
+  "status": 200,
+  "elapsedMs": 43,
+  "body": [
+    {
+      "cp": 7014416,
+      "np": "ANGELICA C/B",
+      "ed": "R DR.  ALBUQUERQUE LINS",
+      "py": 0,
+      "px": 0
+    },
+    {
+      "cp": 260016857,
+      "np": "PEDRO TAQUES B/C",
+      "ed": "R CORONEL JOSE EUSEBIO/ R PEDRO TAQUES",
+      "py": 0,
+      "px": 0
+    },
+    {
+      "cp": 260016859,
+      "np": "ANTÔNIA DE QUEIRÓS - B/C",
+      "ed": "R DONA ANTONIA DE QUEIROS/ R PIAUI",
+      "py": 0,
+      "px": 0
+    },
+    {
+      "cp": 260016861,
+      "np": "CAIO PRADO B/C",
+      "ed": "R MARQUES DE PARANAGUA/ R MARIA ANTONIA",
+      "py": 0,
+      "px": 0
+    },
+    {
+      "cp": 700006085,
+      "np": "ROSA E SILVA C/B",
+      "ed": "R OLIMPIA DE ALMEIDA PRADO/ R LOPES DE OLIVEIRA",
+      "py": 0,
+      "px": 0
+    },
+    {
+      "cp": 700016865,
+      "np": "NOTHMANN C/B",
+      "ed": "R GENERAL JULIO MARCONDES SALGADO/ AL NOTHMANN",
+      "py": 0,
+      "px": 0
+    }
+  ]
+}

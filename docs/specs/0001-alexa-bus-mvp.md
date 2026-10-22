@@ -58,7 +58,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 ### Fonte de dados
 - Integração inicial: SPTrans Olho Vivo; autenticação por token, sessão e cookie conforme contrato oficial vigente.
 - IDs oficiais são cadastrados manualmente; Google Maps não é a fonte de ETA nem dependência operacional do MVP.
-- Verificar em prova de viabilidade os endpoints disponíveis para cada ponto e a cobertura real de linhas e sentidos.
+- Verificar em prova de viabilidade os endpoints disponíveis para cada ponto e a cobertura real de linhas e sentidos. Resultado: [spike 0001](../spikes/0001-sptrans-olho-vivo.md) (contrato, fuso, casos vazios, ausência de horário programado).
 - O retorno de previsão **não garante** indicação de atraso; habilitar pontualidade apenas após comprovar acesso a tabela oficial e associação confiável de viagens.
 - Nunca registrar credenciais, endereço residencial ou payloads sensíveis em logs.
 

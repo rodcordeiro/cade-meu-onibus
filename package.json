@@ -18,7 +18,7 @@
     "ask-sdk-model": "^1.86.0"
   },
   "devDependencies": {
-    "@types/node": "^22.20.5",
+    "@types/node": "^24.0.0",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   }

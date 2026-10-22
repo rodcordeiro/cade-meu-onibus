@@ -1,0 +1,25 @@
+{
+  "name": "cade-meu-onibus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Skill pessoal Alexa com previsões de ônibus SPTrans para pontos e linhas favoritos.",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "invoke:local": "npm run build && node dist/dev/invoke-local.js"
+  },
+  "dependencies": {
+    "ask-sdk-core": "^2.14.0",
+    "ask-sdk-model": "^1.86.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

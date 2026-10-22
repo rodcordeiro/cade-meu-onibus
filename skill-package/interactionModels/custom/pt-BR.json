@@ -1,0 +1,28 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "cadê meu ônibus",
+      "intents": [
+        {
+          "name": "NextBusIntent",
+          "slots": [],
+          "samples": [
+            "quais são os próximos ônibus",
+            "qual é o próximo ônibus",
+            "quando passa o próximo ônibus",
+            "quando chega o ônibus",
+            "próximos ônibus",
+            "me diga os próximos ônibus",
+            "tem ônibus chegando"
+          ]
+        },
+        { "name": "AMAZON.HelpIntent", "samples": [] },
+        { "name": "AMAZON.CancelIntent", "samples": [] },
+        { "name": "AMAZON.StopIntent", "samples": [] },
+        { "name": "AMAZON.FallbackIntent", "samples": [] },
+        { "name": "AMAZON.NavigateHomeIntent", "samples": [] }
+      ],
+      "types": []
+    }
+  }
+}

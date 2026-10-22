@@ -1,11 +1,49 @@
 {
   "version": 1,
   "lines": [
-    { "id": "EXEMPLO-LINHA-1", "label": "linha de exemplo um" },
-    { "id": "EXEMPLO-LINHA-2", "label": "linha de exemplo dois" }
+    {
+      "id": "33822",
+      "label": "Tatuapé"
+    },
+    {
+      "id": "33051",
+      "label": "Belem Verde"
+    },
+    {
+      "id": "33741",
+      "label": "Belem vermelho"
+    }, 
+    {
+      "id": "34974",
+      "label": "SAVOY"
+    },
+    {
+      "id": "1686",
+      "label": "Matias"
+    }
   ],
   "stops": [
-    { "id": "EXEMPLO-PONTO-1", "alias": "ponto de exemplo um", "lineIds": ["EXEMPLO-LINHA-1", "EXEMPLO-LINHA-2"] },
-    { "id": "EXEMPLO-PONTO-2", "alias": "ponto de exemplo dois", "lineIds": ["EXEMPLO-LINHA-1"] }
+    {
+      "id": "8704768",
+      "alias": "Ponto do savoy",
+      "lineIds": [
+        "34974",
+        "1686"
+      ]
+    },
+    {
+      "id": "EXEMPLO-PONTO-2",
+      "alias": "ponto do tatuapé",
+      "lineIds": [
+        "EXEMPLO-LINHA-1"
+      ]
+    },
+    {
+      "id": "EXEMPLO-PONTO-2",
+      "alias": "ponto do belém",
+      "lineIds": [
+        "EXEMPLO-LINHA-1"
+      ]
+    }
   ]
 }

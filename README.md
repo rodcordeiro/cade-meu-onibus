@@ -7,7 +7,7 @@ Consulte [a spec do MVP](docs/specs/0001-alexa-bus-mvp.md), [o glossário de dom
 ## Premissas
 - Skill de uso pessoal; configuração estática de pontos e linhas com IDs oficiais da SPTrans.
 - Node.js + TypeScript + Alexa Skills Kit SDK em AWS Lambda, deploy manual no MVP.
-- Até três chegadas nos próximos 30 minutos, ordenadas globalmente; consultas por linha e por ponto; conversação durante a sessão.
+- Até cinco chegadas nos próximos 30 minutos, ordenadas globalmente; consultas por linha e por ponto; conversação durante a sessão.
 - Previsões em tempo real sujeitas à disponibilidade da API. Atrasos apenas com referência programada confiável.
 - Não incluir tokens reais nem endereço residencial no repositório público.
 
@@ -35,7 +35,7 @@ npm run invoke:local -- AMAZON.HelpIntent  # outra intent
 ## Estrutura
 | Caminho | Responsabilidade |
 | --- | --- |
-| `src/domain` | Tipos e políticas de seleção (janela 0–30 min, par ponto–linha, sentido, ordenação, duplicatas, limite 3). |
+| `src/domain` | Tipos e políticas de seleção (janela 0–30 min, par ponto–linha, sentido, ordenação, duplicatas, limite 5). |
 | `src/application` | `ArrivalService`: consulta todos os pontos, isola falhas e calcula o status de cobertura. |
 | `src/infrastructure/config` | Carregamento e validação integral de `config/favorites.json`. |
 | `src/alexa` | Handlers, fala pt-BR (`SpeechPresenter`) e montagem da skill. |
@@ -48,11 +48,12 @@ npm run invoke:local -- AMAZON.HelpIntent  # outra intent
 ```json
 {
   "version": 1,
-  "lines": [{ "id": "<código SPTrans>", "label": "875A-10", "aliases": ["..."], "direction": "1" }],
+  "lines": [{ "id": "<código cl da SPTrans, um por sentido>", "label": "875A sentido Aeroporto", "aliases": ["..."] }],
   "stops": [{ "id": "<código SPTrans>", "alias": "ponto da padaria", "lineIds": ["<código da linha>"] }]
 }
 ```
 
+- `lines[].id` é o código `cl` da SPTrans, que já identifica o sentido ([ADR-0008](docs/adr/0008-line-identity-per-direction.md)); para os dois sentidos, cadastre duas linhas.
 - `stops[].lineIds` precisa referenciar `lines[].id`. IDs duplicados, campos vazios e referências inexistentes falham na inicialização, com todos os problemas listados.
 - A fala usa "`<linha>` no `<alias>`", então escreva o alias como "ponto da padaria", e não apenas "padaria".
 - Não use endereço residencial nos aliases.

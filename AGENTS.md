@@ -30,7 +30,7 @@ Consulte [triage-labels.md](docs/agents/triage-labels.md) para os papéis `needs
 
 1. **Spec-first:** trace cada mudança até histórias e critérios de aceite da [SPEC-0001](docs/specs/0001-alexa-bus-mvp.md) ou uma spec aprovada posterior; evite expandir o escopo do MVP.
 2. **Separação de responsabilidades:** mantenha regras de domínio e aplicação independentes de AWS, Alexa SDK e detalhes HTTP; a integração SPTrans deve ficar atrás do contrato de provedor.
-3. **Dados corretos:** consulte apenas associações ponto–linha favoritas; agregue todos os pontos elegíveis, filtre a janela de 0 a 30 minutos, ordene globalmente por chegada e anuncie no máximo três resultados com linha e ponto.
+3. **Dados corretos:** consulte apenas associações ponto–linha favoritas; agregue todos os pontos elegíveis, filtre a janela de 0 a 30 minutos, ordene globalmente por chegada e anuncie no máximo cinco resultados com linha e ponto.
 4. **Incerteza explícita:** nunca invente ETA, atraso, adiantamento ou cobertura de pontos; falhas parciais não devem ocultar resultados válidos, e dados desatualizados não podem ser apresentados como tempo real.
 5. **Sessão Alexa:** perguntas de acompanhamento podem reutilizar filtros na sessão corrente; não persista contexto de uma sessão para outra.
 6. **Configuração:** favoritos em JSON empacotado, com códigos oficiais SPTrans; não adicione banco de dados, API Gateway, painel ou CI/CD sem mudança aprovada de escopo.

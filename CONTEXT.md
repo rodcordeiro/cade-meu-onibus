@@ -11,7 +11,7 @@ Consultar por voz a chegada prevista de ônibus em pontos previamente escolhidos
 | Associação ponto–linha | Vínculo que determina quais linhas consultar em um ponto monitorado. | Uma linha pode aparecer em vários pontos. |
 | Previsão de chegada | Estimativa temporal de passagem de determinado veículo por um ponto monitorado. | Não é horário programado nem confirmação de chegada. |
 | Janela de consulta | Intervalo futuro elegível de zero a trinta minutos a partir da referência temporal da consulta. | Previsões fora da janela não são anunciadas. |
-| Consulta geral | Pergunta sem filtro explícito de linha ou de ponto, abrangendo todos os favoritos. | Resposta contém até três previsões globalmente ordenadas. |
+| Consulta geral | Pergunta sem filtro explícito de linha ou de ponto, abrangendo todos os favoritos. | Resposta contém até cinco previsões globalmente ordenadas. |
 | Consulta específica | Pergunta que restringe o resultado a uma linha, a um ponto ou a ambos. | Continua submetida às regras da janela e do limite. |
 | Contexto de conversa | Referências a linha e ponto mencionados na sessão atual. | Não se confunde com preferências permanentes. |
 | Resultado parcial | Resposta com previsões válidas de alguns pontos mesmo se outros não puderam ser consultados. | Não equivale a disponibilidade total. |
@@ -20,7 +20,7 @@ Consultar por voz a chegada prevista de ônibus em pontos previamente escolhidos
 
 ## Regras invariantes
 1. Uma previsão elegível precisa ser válida, futura (ou de passagem iminente) e estar no horizonte de 30 minutos.
-2. Agregar previsões elegíveis dos pontos selecionados, ordenar pelo instante de chegada e limitar a três; empates devem ter ordenação estável e determinística.
+2. Agregar previsões elegíveis dos pontos selecionados, ordenar pelo instante de chegada e limitar a cinco; empates devem ter ordenação estável e determinística.
 3. Cada previsão anunciada identifica linha e ponto, inclusive quando linhas iguais aparecem em pontos distintos.
 4. Falha de um ponto não apaga previsões válidas de outros; ausência de dados não equivale a ausência de ônibus.
 5. Contexto da conversa vale somente na sessão corrente; um novo pedido sem contexto explícito volta à consulta geral.

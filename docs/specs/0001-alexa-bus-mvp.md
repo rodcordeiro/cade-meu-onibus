@@ -8,11 +8,11 @@ Origem: quatro rodadas de Grill with Docs; consolidado com to-spec.
 Uma pessoa que usa ônibus em São Paulo precisa saber, sem abrir um aplicativo, quais veículos de suas linhas favoritas chegarão primeiro aos pontos cadastrados, com estimativas atualizadas e indicação de falhas ou incertezas.
 
 ## Solução
-Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API SPTrans Olho Vivo por códigos oficiais de paradas, agrega previsões, seleciona até três chegadas nos próximos trinta minutos e responde em português. A skill mantém contexto durante a sessão para perguntas de acompanhamento.
+Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API SPTrans Olho Vivo por códigos oficiais de paradas, agrega previsões, seleciona até cinco chegadas nos próximos trinta minutos e responde em português. A skill mantém contexto durante a sessão para perguntas de acompanhamento.
 
 ## Objetivos e métricas de aceite
 - Consulta geral cobre **todos** os pontos favoritos configurados e apenas suas linhas favoritas.
-- Ordenação crescente por previsão de chegada; máximo de **3** resultados após agregação e filtro; janela **0–30 minutos**.
+- Ordenação crescente por previsão de chegada; máximo de **5** resultados após agregação e filtro; janela **0–30 minutos**.
 - Consultas por linha, ponto ou ambos; resolução por apelidos e códigos configurados, com resposta apropriada para entrada ambígua ou desconhecida.
 - Resultado parcial sempre que existir ao menos uma previsão válida e algum ponto falhar; mencionar cobertura incompleta sem prometer completude.
 - Nunca inventar ETA, atraso ou adiantamento; ausência de referência programada confiável implica não informar pontualidade.
@@ -20,7 +20,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 
 ## Histórias de usuário
 1. As a commuter, I want to ask for the next buses, so that I can decide when to leave home.
-2. As a commuter, I want to hear no more than three arrivals ordered by imminence, so that the answer stays short.
+2. As a commuter, I want to hear no more than five arrivals ordered by imminence, so that the answer stays short.
 3. As a commuter, I want each arrival to name its stop and line, so that I do not go to the wrong stop.
 4. As a commuter, I want to ask about a favorite line, so that I can ignore unrelated services.
 5. As a commuter, I want to ask about a saved stop, so that I can compare arrivals at that location.
@@ -51,7 +51,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 4. Obter previsões com concorrência limitada e deadline total compatível com resposta Alexa; erros isolados por ponto.
 5. Normalizar timestamps na referência temporal de São Paulo e rejeitar dados inválidos, antigos ou fora de 0–30 minutos.
 6. Filtrar pelo par ponto–linha e, quando aplicável, pelo sentido configurado; não confundir diferentes viagens/veículos.
-7. Consolidar, eliminar duplicatas por identidade inequívoca de passagem/veículo/ponto se disponível, ordenar por instante de chegada, com desempate estável por ponto e linha; retornar até três.
+7. Consolidar, eliminar duplicatas por identidade inequívoca de passagem/veículo/ponto se disponível, ordenar por instante de chegada, com desempate estável por ponto e linha; retornar até cinco.
 8. Responder com tempo relativo calculado na hora de formular a fala; se houver falha de cobertura, mencionar resultado parcial.
 9. Se não houver previsões, distinguir “nenhuma previsão disponível”, “nenhuma na janela” e “serviço indisponível”, conforme a evidência.
 
@@ -64,7 +64,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 
 ## Contratos de domínio (conceituais, TypeScript)
 - `MonitoredStop`: `id: string` (código oficial); `alias: string`; `lineIds: string[]` (referências favoritas); atributos opcionais de direção/aliases conforme validação do provedor.
-- `FavoriteLine`: `id: string` (identidade do provedor); `label: string`; `aliases?: string[]`; `direction?: string`.
+- `FavoriteLine`: `id: string` (código `cl` do provedor, que identifica linha **e sentido**; ver [ADR-0008](../adr/0008-line-identity-per-direction.md)); `label: string`; `aliases?: string[]`; `direction?: string` (opcional e redundante).
 - `FavoritesConfig`: `stops: MonitoredStop[]`; `lines: FavoriteLine[]`; revisão de esquema `version`.
 - `ArrivalPrediction`: `stopId: string`; `lineId: string`; `vehicleId?: string`; `arrivalAt: Date`; `observedAt: Date`; `direction?: string`; `scheduledAt?: Date` apenas se confiável.
 - `ArrivalQuery`: `stopId?: string`; `lineId?: string`; `now: Date`; parâmetros de janela e limite definidos por política de aplicação.
@@ -91,7 +91,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 
 ## Estratégia de testes
 - Verificar prioritariamente o comportamento da intent/handler Alexa com eventos simulados e um transporte HTTP falso nas bordas; evitar mocks de cada módulo interno.
-- Casos: seleção global intercalada; três resultados; limites exatos 0/30 min; fora do horizonte; sentido diferente; mesmo veículo em pontos distintos; duplicata; empate; horário inválido ou desatualizado; falha de uma/todas as paradas; ausência de previsões; input ambíguo; acompanhamento na mesma sessão; reinício de sessão; token ausente; API lenta e deadline.
+- Casos: seleção global intercalada; cinco resultados; limites exatos 0/30 min; fora do horizonte; sentido diferente; mesmo veículo em pontos distintos; duplicata; empate; horário inválido ou desatualizado; falha de uma/todas as paradas; ausência de previsões; input ambíguo; acompanhamento na mesma sessão; reinício de sessão; token ausente; API lenta e deadline.
 - Contratos de integração com fixtures sanitizadas para o adaptador Olho Vivo; teste real opt-in com credencial protegida e pontos conhecidos.
 - Smoke test manual no simulador da Alexa e em dispositivo real em pt-BR antes de declarar o MVP aceito.
 

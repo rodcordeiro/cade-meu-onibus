@@ -32,12 +32,13 @@ describe('consulta geral (NextBusIntent)', () => {
     expect(speech).toBe('Próximo ônibus: 875A-10 no ponto da padaria em 5 minutos.');
   });
 
-  it('consulta todos os pontos favoritos e anuncia as 3 chegadas mais próximas em ordem global', async () => {
+  it('consulta todos os pontos favoritos e anuncia as 5 chegadas mais próximas em ordem global', async () => {
     const provider = new FakeTransportProvider({
       '9001': [
         prediction('9001', '1001', minutesFromNow(12)),
         prediction('9001', '1002', minutesFromNow(2)),
         prediction('9001', '1001', minutesFromNow(25)),
+        prediction('9001', '1002', minutesFromNow(20)),
       ],
       '9002': [prediction('9002', '1001', minutesFromNow(7)), prediction('9002', '1001', minutesFromNow(15))],
     });
@@ -48,7 +49,9 @@ describe('consulta geral (NextBusIntent)', () => {
     expect(speech).toBe(
       'Próximos ônibus: 701U-10 no ponto da padaria em 2 minutos; ' +
         '875A-10 no ponto do metrô em 7 minutos; ' +
-        'e 875A-10 no ponto da padaria em 12 minutos.',
+        '875A-10 no ponto da padaria em 12 minutos; ' +
+        '875A-10 no ponto do metrô em 15 minutos; ' +
+        'e 701U-10 no ponto da padaria em 20 minutos.',
     );
   });
 

@@ -9,3 +9,4 @@ Decisões aprovadas nas rodadas de Grill with Docs (22/10/2026). Cada ADR regist
 5. [ADR-0005 — Seleção das chegadas](0005-arrival-selection.md)
 6. [ADR-0006 — Falhas parciais](0006-partial-failure.md)
 7. [ADR-0007 — Configuração, credenciais e implantação](0007-operational-configuration.md)
+8. [ADR-0008 — Identidade de linha por sentido](0008-line-identity-per-direction.md)

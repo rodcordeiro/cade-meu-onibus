@@ -103,10 +103,10 @@ Uma chamada retorna **todas as linhas** com veículos previstos na parada. A lin
 - Conforme o invariante 6 do CONTEXT e o ADR-0001, **o MVP não anuncia atraso nem adiantamento**, e `scheduledAt` fica sempre ausente.
 
 ## Recomendações para o #5
-1. **Decisão pendente (exige ADR no #5):** a identidade de linha do provedor é por sentido (`cl`). Opções:
+1. **Decidido no [ADR-0008](../adr/0008-line-identity-per-direction.md): opção (a).** A identidade de linha do provedor é por sentido (`cl`). Opções avaliadas:
    - (a) `lines[].id = cl`, uma entrada por sentido, e `direction` redundante. É simples no adaptador, mas exige aliases por sentido para a voz.
    - (b) `id` = letreiro `c` + `direction = sl`. Mantém o contrato atual, mas o adaptador precisa mapear `cl` → (`c`, `sl`).
-   Isso altera a semântica de `FavoriteLine` (SPEC, ADR-0002), então não está decidido aqui.
+   A opção (a) foi aceita: `lines[].id = cl`, uma entrada por sentido.
 2. Adaptador:
    - fazer login lazy;
    - guardar o cookie em memória durante a vida da Lambda;

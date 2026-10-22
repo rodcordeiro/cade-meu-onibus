@@ -9,7 +9,7 @@ import {
 } from 'ask-sdk-core';
 import type { Response } from 'ask-sdk-model';
 import { ArrivalService } from '../application/arrival-service';
-import { QUERY_WINDOW_MINUTES } from '../domain/arrival-policy';
+import { MAX_ANNOUNCED_ARRIVALS, QUERY_WINDOW_MINUTES } from '../domain/arrival-policy';
 import type { FavoritesConfig, TransportProvider } from '../domain/types';
 import { SpeechPresenter } from './speech-presenter';
 
@@ -23,7 +23,7 @@ export interface SkillDependencies {
 }
 
 const HELP_SPEECH =
-  `Você pode perguntar: quais são os próximos ônibus? Eu digo até três chegadas nos próximos ${QUERY_WINDOW_MINUTES} minutos nos seus pontos favoritos.`;
+  `Você pode perguntar: quais são os próximos ônibus? Eu digo até ${MAX_ANNOUNCED_ARRIVALS} chegadas nos próximos ${QUERY_WINDOW_MINUTES} minutos nos seus pontos favoritos.`;
 const HELP_REPROMPT = 'Quer saber quais são os próximos ônibus?';
 const FALLBACK_SPEECH = 'Não entendi. Você pode perguntar: quais são os próximos ônibus?';
 const ERROR_SPEECH = 'Desculpe, algo deu errado. Tente novamente em instantes.';

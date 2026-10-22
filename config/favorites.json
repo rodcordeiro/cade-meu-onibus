@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "lines": [
+    { "id": "EXEMPLO-LINHA-1", "label": "linha de exemplo um" },
+    { "id": "EXEMPLO-LINHA-2", "label": "linha de exemplo dois" }
+  ],
+  "stops": [
+    { "id": "EXEMPLO-PONTO-1", "alias": "ponto de exemplo um", "lineIds": ["EXEMPLO-LINHA-1", "EXEMPLO-LINHA-2"] },
+    { "id": "EXEMPLO-PONTO-2", "alias": "ponto de exemplo dois", "lineIds": ["EXEMPLO-LINHA-1"] }
+  ]
+}

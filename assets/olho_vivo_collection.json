@@ -1,0 +1,302 @@
+{
+  "info": {
+    "name": "SPTrans Olho Vivo — Cadê Meu Ônibus",
+    "_postman_id": "cbb01c16-2e2c-44f4-9270-3c2e09c94a31",
+    "description": "Collection para autenticação e consultas da API SPTrans Olho Vivo v2.1. Execute 01 - Autenticação primeiro. Cookies são gerenciados pelo Postman. Não exporte variáveis preenchidas com credenciais. Documentação: https://www.sptrans.com.br/desenvolvedores/api-do-olho-vivo-guia-de-referencia/documentacao-api/",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01 - Autenticação",
+      "item": [
+        {
+          "name": "Autenticar com token",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Login/Autenticar?token={{sptransToken}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Login",
+                "Autenticar"
+              ],
+              "query": [
+                {
+                  "key": "token",
+                  "value": "{{sptransToken}}"
+                }
+              ]
+            },
+            "description": "Obtém uma sessão autenticada. O token é enviado como query parameter segundo o contrato da SPTrans. O Postman deve reter automaticamente os cookies Set-Cookie retornados; não compartilhe logs/URLs contendo token."
+          },
+          "response": [],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Autenticação retornou true\", function () {",
+                  "  pm.response.to.have.status(200);",
+                  "  pm.expect(pm.response.json()).to.eql(true);",
+                  "});",
+                  "// Postman armazena automaticamente o cookie de sessão do domínio.",
+                  "// Execute as consultas seguintes no mesmo workspace/cliente, com cookies habilitados."
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02 - Linhas",
+      "item": [
+        {
+          "name": "Buscar linhas por termo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Linha/Buscar?termosBusca={{termoLinha}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Linha",
+                "Buscar"
+              ],
+              "query": [
+                {
+                  "key": "termosBusca",
+                  "value": "{{termoLinha}}"
+                }
+              ]
+            },
+            "description": "Busca linhas por número ou nome."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Paradas",
+      "item": [
+        {
+          "name": "Buscar paradas por termo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Parada/Buscar?termosBusca={{termoParada}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Parada",
+                "Buscar"
+              ],
+              "query": [
+                {
+                  "key": "termosBusca",
+                  "value": "{{termoParada}}"
+                }
+              ]
+            },
+            "description": "Localiza paradas pelo nome/endereço textual."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar paradas por linha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Parada/BuscarParadasPorLinha?codigoLinha={{codigoLinha}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Parada",
+                "BuscarParadasPorLinha"
+              ],
+              "query": [
+                {
+                  "key": "codigoLinha",
+                  "value": "{{codigoLinha}}"
+                }
+              ]
+            },
+            "description": "Lista paradas atendidas por uma linha."
+          },
+          "response": []
+        },
+        {
+          "name": "Buscar paradas por corredor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Parada/BuscarParadasPorCorredor?codigoCorredor={{codigoCorredor}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Parada",
+                "BuscarParadasPorCorredor"
+              ],
+              "query": [
+                {
+                  "key": "codigoCorredor",
+                  "value": "{{codigoCorredor}}"
+                }
+              ]
+            },
+            "description": "Lista paradas de um corredor, quando aplicável."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 - Previsões",
+      "item": [
+        {
+          "name": "Previsão por parada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Previsao/Parada?codigoParada={{codigoParada}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Previsao",
+                "Parada"
+              ],
+              "query": [
+                {
+                  "key": "codigoParada",
+                  "value": "{{codigoParada}}"
+                }
+              ]
+            },
+            "description": "Principal endpoint do MVP: previsões das linhas de uma parada."
+          },
+          "response": []
+        },
+        {
+          "name": "Previsão por linha",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Previsao/Linha?codigoLinha={{codigoLinha}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Previsao",
+                "Linha"
+              ],
+              "query": [
+                {
+                  "key": "codigoLinha",
+                  "value": "{{codigoLinha}}"
+                }
+              ]
+            },
+            "description": "Previsões de uma linha."
+          },
+          "response": []
+        },
+        {
+          "name": "Previsão por linha e parada",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/Previsao?codigoParada={{codigoParada}}&codigoLinha={{codigoLinha}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "Previsao"
+              ],
+              "query": [
+                {
+                  "key": "codigoParada",
+                  "value": "{{codigoParada}}"
+                },
+                {
+                  "key": "codigoLinha",
+                  "value": "{{codigoLinha}}"
+                }
+              ]
+            },
+            "description": "Filtra previsões de uma linha em uma parada."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// As requisições autenticadas dependem do cookie retornado por Login/Autenticar.",
+          "// Se a sessão expirar, execute novamente a requisição de autenticação."
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.olhovivo.sptrans.com.br/v2.1",
+      "type": "string"
+    },
+    {
+      "key": "sptransToken",
+      "value": "",
+      "type": "string",
+      "description": "Preencha localmente; não compartilhe exportações com o token."
+    },
+    {
+      "key": "termoLinha",
+      "value": "875A",
+      "type": "string"
+    },
+    {
+      "key": "termoParada",
+      "value": "Paulista",
+      "type": "string"
+    },
+    {
+      "key": "codigoLinha",
+      "value": "",
+      "type": "string",
+      "description": "Código retornado por Linha/Buscar."
+    },
+    {
+      "key": "codigoParada",
+      "value": "",
+      "type": "string",
+      "description": "Código retornado por Parada/Buscar ou BuscarParadasPorLinha."
+    },
+    {
+      "key": "codigoCorredor",
+      "value": "",
+      "type": "string",
+      "description": "Código oficial de corredor."
+    }
+  ]
+}

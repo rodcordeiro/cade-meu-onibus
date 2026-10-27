@@ -3,23 +3,28 @@
   "lines": [
     {
       "id": "33822",
-      "label": "Tatuapé"
+      "label": "Tatuapé",
+      "arrivalSource": "position"
     },
     {
       "id": "33051",
-      "label": "Belem Verde"
+      "label": "Belem Verde",
+      "arrivalSource": "forecast"
     },
     {
       "id": "33741",
-      "label": "Belem vermelho"
-    }, 
+      "label": "Belem vermelho",
+      "arrivalSource": "forecast"
+    },
     {
       "id": "34974",
-      "label": "SAVOY"
+      "label": "SAVOY",
+      "arrivalSource": "position"
     },
     {
       "id": "1686",
-      "label": "Matias"
+      "label": "Matias",
+      "arrivalSource": "position"
     }
   ],
   "stops": [
@@ -35,14 +40,15 @@
       "id": "EXEMPLO-PONTO-2",
       "alias": "ponto do tatuapé",
       "lineIds": [
-        "EXEMPLO-LINHA-1"
+        "33822"
       ]
     },
     {
       "id": "EXEMPLO-PONTO-2",
       "alias": "ponto do belém",
       "lineIds": [
-        "EXEMPLO-LINHA-1"
+        "33741",
+        "33051"
       ]
     }
   ]

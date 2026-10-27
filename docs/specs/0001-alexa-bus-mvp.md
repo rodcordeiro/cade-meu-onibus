@@ -16,6 +16,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 - Consultas por linha, ponto ou ambos; resolução por apelidos e códigos configurados, com resposta apropriada para entrada ambígua ou desconhecida.
 - Resultado parcial sempre que existir ao menos uma previsão válida e algum ponto falhar; mencionar cobertura incompleta sem prometer completude.
 - Nunca inventar ETA, atraso ou adiantamento; ausência de referência programada confiável implica não informar pontualidade.
+- Linhas favoritas sem previsão no provedor são anunciadas por **avistamento** (referência próxima e idade da observação), sem tempo de chegada ([ADR-0009](../adr/0009-position-fallback.md)).
 - Sem infraestrutura persistente ou interface de gerenciamento para o MVP.
 
 ## Histórias de usuário
@@ -35,6 +36,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 14. As a skill owner, I want the skill to run in AWS Lambda, so that I can use Alexa without operating a permanent server.
 15. As a skill owner, I want local automated tests and device validation, so that I can confidently deploy changes.
 16. As a commuter, I want understandable guidance when the spoken point or line is ambiguous, so that I can retry my request.
+17. As a commuter, I want to hear where the nearest approaching bus of a line without official predictions was last seen, so that I can still decide when to leave without hearing an invented arrival time.
 
 ## Escopo funcional
 ### Entrada e interação de voz
@@ -55,21 +57,35 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 8. Responder com tempo relativo calculado na hora de formular a fala; se houver falha de cobertura, mencionar resultado parcial.
 9. Se não houver previsões, distinguir “nenhuma previsão disponível”, “nenhuma na janela” e “serviço indisponível”, conforme a evidência.
 
+### Avistamento para linhas sem previsão ([ADR-0009](../adr/0009-position-fallback.md))
+Resumo; o detalhamento, as histórias e os critérios de teste estão na [SPEC-0002](0002-position-sighting.md).
+
+1. Linhas com `arrivalSource = "position"` não são consultadas por previsão; obter as posições dos veículos da linha, com o mesmo isolamento de falhas e deadline das paradas.
+2. Descartar posições com observação além do limite de frescor (hipótese: 5 min).
+3. Para cada associação ponto–linha, relacionar cada veículo ao ponto de referência mais próximo dentro do raio (hipótese: 300 m); ignorar veículos fora de todos os raios.
+4. Eleger por associação o avistamento mais próximo do ponto monitorado, ou seja, o que tem menos referências restantes até ele.
+5. Anunciar até um avistamento por associação, depois das previsões e fora do limite de 5. A fala informa a linha, o ponto, a referência, quantas referências faltam e a idade da observação, **sem minutos até a chegada**.
+6. Sem avistamento elegível: “sem previsão e sem ônibus visto perto”, nunca “não há ônibus”.
+
 ### Fonte de dados
 - Integração inicial: SPTrans Olho Vivo; autenticação por token, sessão e cookie conforme contrato oficial vigente.
 - IDs oficiais são cadastrados manualmente; Google Maps não é a fonte de ETA nem dependência operacional do MVP.
 - Verificar em prova de viabilidade os endpoints disponíveis para cada ponto e a cobertura real de linhas e sentidos. Resultado: [spike 0001](../spikes/0001-sptrans-olho-vivo.md) (contrato, fuso, casos vazios, ausência de horário programado).
+- Cobertura de previsão não é universal: 575C-10 e 407Y-10 (sentido Vila Prudente) só expõem posição de veículos (relato do proprietário, 27/10/2026); ver [ADR-0009](../adr/0009-position-fallback.md).
 - O retorno de previsão **não garante** indicação de atraso; habilitar pontualidade apenas após comprovar acesso a tabela oficial e associação confiável de viagens.
 - Nunca registrar credenciais, endereço residencial ou payloads sensíveis em logs.
 
 ## Contratos de domínio (conceituais, TypeScript)
-- `MonitoredStop`: `id: string` (código oficial); `alias: string`; `lineIds: string[]` (referências favoritas); atributos opcionais de direção/aliases conforme validação do provedor.
-- `FavoriteLine`: `id: string` (código `cl` do provedor, que identifica linha **e sentido**; ver [ADR-0008](../adr/0008-line-identity-per-direction.md)); `label: string`; `aliases?: string[]`; `direction?: string` (opcional e redundante).
+- `MonitoredStop`: `id: string` (código oficial); `alias: string`; `lineIds: string[]` (referências favoritas); atributos opcionais de direção/aliases conforme validação do provedor; `approaches?: { lineId: string; references: ReferencePoint[] }[]`, obrigatório para cada linha em modo `position`, com as referências em ordem de aproximação e não vazias.
+- `ReferencePoint`: `name: string` (nome falado); `lat: number`; `lon: number`; somente paradas públicas.
+- `FavoriteLine`: `id: string` (código `cl` do provedor, que identifica linha **e sentido**; ver [ADR-0008](../adr/0008-line-identity-per-direction.md)); `label: string`; `aliases?: string[]`; `direction?: string` (opcional e redundante); `arrivalSource?: "forecast" | "position"` (padrão `forecast`; ver [ADR-0009](../adr/0009-position-fallback.md)).
 - `FavoritesConfig`: `stops: MonitoredStop[]`; `lines: FavoriteLine[]`; revisão de esquema `version`.
 - `ArrivalPrediction`: `stopId: string`; `lineId: string`; `vehicleId?: string`; `arrivalAt: Date`; `observedAt: Date`; `direction?: string`; `scheduledAt?: Date` apenas se confiável.
 - `ArrivalQuery`: `stopId?: string`; `lineId?: string`; `now: Date`; parâmetros de janela e limite definidos por política de aplicação.
-- `ArrivalResult`: `predictions: ArrivalPrediction[]`; `failedStopIds: string[]`; `queriedStopIds: string[]`; `status: complete|partial|unavailable`.
-- `TransportProvider`: operação `getArrivals(stopId, requestContext)` com resultados normalizados; interface independente de SDK Alexa e AWS.
+- `VehiclePosition`: `lineId: string`; `vehicleId: string`; `lat: number`; `lon: number`; `observedAt: Date`.
+- `VehicleSighting`: `stopId: string`; `lineId: string`; `vehicleId: string`; `referenceName: string`; `referencesRemaining: number`; `observedAt: Date`. Sem `arrivalAt`, por definição.
+- `ArrivalResult`: `predictions: ArrivalPrediction[]`; `sightings: VehicleSighting[]`; `failedStopIds: string[]`; `failedLineIds: string[]`; `queriedStopIds: string[]`; `status: complete|partial|unavailable`.
+- `TransportProvider`: operações `getArrivals(stopId, requestContext)` e `getVehiclePositions(lineId, requestContext)` com resultados normalizados; interface independente de SDK Alexa e AWS.
 - `FavoritesRepository`: operação `load()` e validação integral do documento; falhar explicitamente se inválido.
 - `ArrivalService`: operação `query(ArrivalQuery)` com ordenação, filtro e agregação independentes do provedor.
 - `SpeechPresenter`: traduz `ArrivalResult` e contexto em resposta pt-BR sem consultar serviços externos.
@@ -91,7 +107,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 
 ## Estratégia de testes
 - Verificar prioritariamente o comportamento da intent/handler Alexa com eventos simulados e um transporte HTTP falso nas bordas; evitar mocks de cada módulo interno.
-- Casos: seleção global intercalada; cinco resultados; limites exatos 0/30 min; fora do horizonte; sentido diferente; mesmo veículo em pontos distintos; duplicata; empate; horário inválido ou desatualizado; falha de uma/todas as paradas; ausência de previsões; input ambíguo; acompanhamento na mesma sessão; reinício de sessão; token ausente; API lenta e deadline.
+- Casos: seleção global intercalada; cinco resultados; limites exatos 0/30 min; fora do horizonte; sentido diferente; mesmo veículo em pontos distintos; duplicata; empate; horário inválido ou desatualizado; falha de uma/todas as paradas; ausência de previsões; input ambíguo; acompanhamento na mesma sessão; reinício de sessão; token ausente; API lenta e deadline; linha em modo `position` com avistamento, sem avistamento, com posição antiga, com veículo fora de todos os raios, com vários veículos (eleger o mais próximo do ponto) e com falha na consulta de posição; fala de avistamento nunca contém minutos até a chegada.
 - Contratos de integração com fixtures sanitizadas para o adaptador Olho Vivo; teste real opt-in com credencial protegida e pontos conhecidos.
 - Smoke test manual no simulador da Alexa e em dispositivo real em pt-BR antes de declarar o MVP aceito.
 
@@ -108,6 +124,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 - Notificações proativas, rotinas automatizadas, rastreamento em mapa, rotas, conexões entre ônibus e histórico de pontualidade.
 - Infraestrutura IaC, deploy contínuo, publicação na loja pública de skills e suporte a outras cidades/provedores no MVP.
 - Cálculo de atrasos sem fonte de horários programados verificável.
+- ETA derivado de posição, seja por distância/velocidade ou por tempo de trajeto histórico. Este último está mapeado como evolução futura no [ADR-0009](../adr/0009-position-fallback.md#evolução-futura-estimativa-por-tempo-de-trajeto-histórico-opção-d).
 
 ## Riscos e verificações antes da implementação
 1. **Viabilidade SPTrans:** validar token, login, payload, fuso, códigos, cobertura de paradas e limitação de taxa (não presumir cobertura total).
@@ -115,6 +132,7 @@ Skill pessoal Alexa que interpreta perguntas gerais ou filtradas, consulta a API
 3. **Latência:** medir respostas reais, estabelecer valores concretos de timeout, concorrência e frescor após uma rodada de testes; não inventar SLA.
 4. **Direção/identidade:** verificar mapeamento dos códigos de linha e sentido nos resultados do provedor.
 5. **Privacidade:** evitar registrar coordenadas de residência em repositório público; preferir alias e identificadores oficiais.
+6. **Posição de veículos:** capturar fixture sanitizada da consulta de posição por linha (575C-10 e 407Y-10) e validar as hipóteses de frescor, raio e tamanho da lista de referências do [ADR-0009](../adr/0009-position-fallback.md).
 
 ## Dependências de execução (sequência sugerida)
 1. Prova de viabilidade SPTrans e captura de fixtures sanitizadas.

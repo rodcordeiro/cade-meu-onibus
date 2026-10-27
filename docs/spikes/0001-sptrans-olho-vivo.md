@@ -95,6 +95,11 @@ Uma chamada retorna **todas as linhas** com veículos previstos na parada. A lin
 - Use o código da parada vindo da previsão ou da busca, não dessa lista.
 - Uma única amostra, em horário de pico da tarde. Madrugada, fim de semana e outros pontos não foram avaliados.
 
+### Linhas sem previsão (adendo de 27/10/2026)
+- Relato do proprietário: **575C-10** e **407Y-10**, no sentido Vila Prudente, respondem `200` sem previsão em nenhuma parada consultada. A consulta de posição continua trazendo os veículos (`px`/`py`).
+- **Ainda não há fixture** desse comportamento. Falta capturar `Previsao/Linha` e `Posicao/Linha` dessas linhas e sanitizar o resultado.
+- Consequência: cobertura de previsão **não** é garantida por linha. Tratamento decidido no [ADR-0009](../adr/0009-position-fallback.md) (avistamento por posição, sem ETA).
+
 ## Horário programado e atraso
 **Não há fonte confiável no Olho Vivo.**
 - A previsão não traz horário programado.

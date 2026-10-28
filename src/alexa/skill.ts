@@ -12,6 +12,7 @@ import { ArrivalService } from '../application/arrival-service';
 import { MAX_ANNOUNCED_ARRIVALS, QUERY_WINDOW_MINUTES } from '../domain/arrival-policy';
 import type { FavoritesConfig, TransportProvider } from '../domain/types';
 import { SpeechPresenter } from './speech-presenter';
+import { resolveFilter } from './filter-resolution';
 
 /** Dependências injetadas na skill; o relógio permite testes determinísticos. */
 export interface SkillDependencies {
@@ -54,7 +55,31 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
   };
 
   const launchHandler: RequestHandler = { canHandle: isRequestType('LaunchRequest'), handle: answerGeneralQuery };
-  const nextBusHandler: RequestHandler = { canHandle: isIntent('NextBusIntent'), handle: answerGeneralQuery };
+  const filteredHandler: RequestHandler = {
+    canHandle: isIntent('NextBusIntent', 'NextBusByLineIntent', 'NextBusByStopIntent', 'NextBusByLineAndStopIntent'),
+    handle: async (input) => {
+      const request = input.requestEnvelope.request;
+      if (request.type !== 'IntentRequest') return answerGeneralQuery(input);
+      const slots = request.intent.slots;
+      const line = slots?.line?.value?.trim();
+      const stop = slots?.stop?.value?.trim();
+      const lineResolution = line ? resolveFilter(favorites, 'line', line) : undefined;
+      const stopResolution = stop ? resolveFilter(favorites, 'stop', stop) : undefined;
+      for (const [dimension, resolution] of [['linha', lineResolution], ['ponto', stopResolution]] as const) {
+        if (!resolution || resolution.kind === 'resolved') continue;
+        const message = resolution.kind === 'ambiguous'
+          ? `Encontrei mais de uma opção para ${dimension}: ${resolution.options.join(' ou ')}. Qual você quer?`
+          : `Não reconheci ${dimension} informado. Tente um nome dos seus favoritos.`;
+        return input.responseBuilder.speak(escapeSsml(message)).reprompt('Qual linha ou ponto dos seus favoritos?').getResponse();
+      }
+      const result = await service.query({
+        now: now(),
+        ...(lineResolution?.kind === 'resolved' && { lineId: lineResolution.id }),
+        ...(stopResolution?.kind === 'resolved' && { stopId: stopResolution.id }),
+      });
+      return input.responseBuilder.speak(escapeSsml(presenter.present(result, now()))).withShouldEndSession(true).getResponse();
+    },
+  };
 
   const helpHandler: RequestHandler = {
     canHandle: isIntent('AMAZON.HelpIntent'),
@@ -88,7 +113,7 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
   const builder = SkillBuilders.custom();
   if (skillId) builder.withSkillId(skillId);
   return builder
-    .addRequestHandlers(launchHandler, nextBusHandler, helpHandler, stopHandler, fallbackHandler, sessionEndedHandler)
+    .addRequestHandlers(launchHandler, filteredHandler, helpHandler, stopHandler, fallbackHandler, sessionEndedHandler)
     .addErrorHandlers(errorHandler)
     .create();
 }

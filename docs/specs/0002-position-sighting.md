@@ -53,13 +53,13 @@ O proprietário marca no arquivo de favoritos as linhas que só têm posição. 
   - eleger o veículo com menor `referencesRemaining` e, no empate, o de `observedAt` mais recente e depois o menor `vehicleId`, para a ordem ser determinística.
 
   A distância é calculada por haversine, sem nenhuma dependência nova.
-- **Limites como hipótese:** frescor de 5 min e raio de 300 m, como constantes nomeadas da política. Os valores serão revistos depois da captura de campo.
+- **Limites como hipótese:** frescor de 5 min (com tolerância de 60 s para relógio adiantado, compartilhada com a previsão), raio de 300 m e folga de 50 m para o ônibus que já passou do ponto, como constantes nomeadas do domínio. Os valores serão revistos depois da captura de campo.
 - **Serviço de aplicação:**
   - aplica os mesmos filtros de linha, ponto e sessão às associações `forecast` e `position`;
   - consulta os pontos (previsão) e as linhas (posição) com a mesma concorrência limitada e o mesmo deadline total;
   - registra falhas por linha em `failedLineIds`;
   - calcula `status` considerando falhas de pontos e de linhas.
-- **Resultado:** `ArrivalResult` ganha `sightings` e `failedLineIds`. Previsões, janela, limite de 5 e `outsideWindowCount` continuam como estão. Avistamentos não têm `arrivalAt` e não entram na ordenação de chegadas.
+- **Resultado:** `ArrivalResult` ganha `sightings`, `positionAssociations` e `failedLineIds`. `positionAssociations` é uma lista de `StopLineAssociation { stopId, lineId }` com as associações `position` no escopo da consulta cujas posições foram obtidas, com ou sem avistamento elegível; associações de linhas em `failedLineIds` ficam de fora. A fala usa essa lista para dizer "sem previsão e sem ônibus visto perto" quando a linha respondeu sem veículo elegível, distinguindo esse caso da falha de consulta. Faz parte do contrato do resultado, tanto quanto `sightings`. Previsões, janela, limite de 5 e `outsideWindowCount` continuam como estão. Avistamentos não têm `arrivalAt` e não entram na ordenação de chegadas.
 - **Fala:** depois das previsões, uma frase por avistamento com linha, ponto, referência, referências restantes e idade da observação, além da menção explícita de que a linha não tem previsão da SPTrans. Sem avistamento elegível, a frase é "sem previsão e sem ônibus visto perto". O texto exato é definido no ticket da fala e validado em dispositivo.
 - **Sessão:** não muda. Os filtros de linha e ponto da sessão valem para avistamentos do mesmo jeito que para previsões.
 
@@ -93,4 +93,6 @@ O proprietário marca no arquivo de favoritos as linhas que só têm posição. 
 - **Pré-requisito de evidência:** ainda não existe fixture de `Posicao/Linha` nem de previsão vazia das duas linhas. A captura vem antes do adaptador (risco 6 da SPEC-0001).
 - **Estado atual da configuração:** `config/favorites.json` já declara `arrivalSource` em linhas locais, mas ainda não tem `approaches`. Há dois pontos com o mesmo id provisório (`EXEMPLO-PONTO-2`), o que deve falhar quando a validação de favoritos for aplicada. Preencha os códigos reais antes do deploy.
 - **Escolha das referências:** o GTFS local em `assets/gtfs/`, ignorado pelo git, pode ajudar o proprietário a escolher paradas e coordenadas **fora** do runtime (`stops.txt`, `shapes.txt`). O artefato da Lambda continua sem o GTFS.
+- **Fixtures de `Posicao/Linha` (#16):** as fixtures capturadas não têm `px`/`py` de propósito, porque as posições reais ficam perto do ponto do proprietário e revelariam um endereço residencial. O mapeamento `py` → latitude e `px` → longitude foi validado com payloads sintéticos; a primeira captura de campo com coordenadas deve confirmá-lo, sem versionar coordenadas reais.
+- **Responsabilidade do proprietário sobre as referências:** o carregamento de favoritos não consegue verificar que a lista de referências termina no ponto monitorado, porque `MonitoredStop` não tem coordenadas. Cabe ao proprietário garantir que a última referência seja o próprio ponto; caso contrário, "já junto ao ponto" e a heurística de ônibus que já passou ficam incorretas.
 - **Linguagem:** os termos "Avistamento" e "Ponto de referência" e o invariante 7 estão no [CONTEXT.md](../../CONTEXT.md).

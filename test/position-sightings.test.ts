@@ -129,6 +129,81 @@ describe('fala de avistamentos sem ETA (#21)', () => {
   });
 });
 
+describe('consultas mistas e continuidade de sessão (#22)', () => {
+  const NO_SIGHTING = '575C-10 no ponto da padaria: sem previsão e sem ônibus visto perto.';
+  const onlyPadaria = async (positions: VehiclePosition[]) => {
+    const provider = new FakeTransportProvider({}, { '2001': positions });
+    const { speech } = await invoke({ favorites, provider }, filtered('NextBusByLineAndStopIntent', { line: '575C-10', stop: 'ponto da padaria' }));
+    return speech;
+  };
+
+  it('ignora posição antiga', async () => {
+    expect(await onlyPadaria([vehicle('2001', 'v1', -23.58, 6)])).toBe(NO_SIGHTING);
+  });
+
+  it('ignora veículo fora do raio de todas as referências', async () => {
+    expect(await onlyPadaria([vehicle('2001', 'v1', -23.575, 1)])).toBe(NO_SIGHTING);
+  });
+
+  it('ignora veículo que já passou do ponto', async () => {
+    expect(await onlyPadaria([vehicle('2001', 'v1', -23.60, 1)])).toBe(NO_SIGHTING);
+  });
+
+  it('entre vários veículos anuncia só o mais próximo do ponto', async () => {
+    const speech = await onlyPadaria([vehicle('2001', 'v1', -23.57, 1), vehicle('2001', 'v2', -23.58, 4)]);
+    expect(speech).toBe('575C-10 no ponto da padaria, sem previsão da SPTrans: ônibus visto há 4 minutos perto de Parada Beta, faltando 1 referência até o ponto.');
+  });
+
+  it('no empate de referência anuncia a observação mais recente, independentemente da ordem recebida', async () => {
+    const tied = [vehicle('2001', 'v1', -23.57, 4), vehicle('2001', 'v2', -23.57, 1)];
+    const expected = '575C-10 no ponto da padaria, sem previsão da SPTrans: ônibus visto há 1 minuto perto de Parada Alfa, faltando 2 referências até o ponto.';
+    expect(await onlyPadaria(tied)).toBe(expected);
+    expect(await onlyPadaria([...tied].reverse())).toBe(expected);
+  });
+
+  it('ponto misto por voz traz previsões primeiro e o avistamento depois', async () => {
+    const provider = new FakeTransportProvider(
+      { '9001': [prediction('9001', '1001', 7)] },
+      { '2001': [vehicle('2001', 'v1', -23.58, 2)] },
+    );
+
+    const { speech } = await invoke({ favorites, provider }, filtered('NextBusByStopIntent', { stop: 'ponto da padaria' }));
+
+    expect(speech).toBe(
+      'Próximo ônibus: 875A-10 no ponto da padaria em 7 minutos. ' +
+        '575C-10 no ponto da padaria, sem previsão da SPTrans: ônibus visto há 2 minutos perto de Parada Beta, faltando 1 referência até o ponto.',
+    );
+  });
+
+  it('pergunta seguinte na mesma sessão reutiliza a linha position', async () => {
+    const provider = new FakeTransportProvider({}, { '2002': [vehicle('2002', 'v9', -23.64, 1)] });
+    const first = await invoke({ favorites, provider }, filtered('NextBusByLineIntent', { line: '407Y-10' }));
+    provider.positionCalls.length = 0;
+
+    const followup = filtered('NextBusIntent', {});
+    followup.session!.new = false;
+    followup.session!.attributes = first.raw.sessionAttributes ?? {};
+    const { speech } = await invoke({ favorites, provider }, followup);
+
+    expect(provider.calls).toEqual([]);
+    expect(provider.positionCalls).toEqual(['2002']);
+    expect(speech).toBe('407Y-10 no ponto do metrô, sem previsão da SPTrans: ônibus visto há 1 minuto perto de Parada Delta, faltando 1 referência até o ponto.');
+  });
+
+  it('nenhuma fala de linha position contém minutos até a chegada', async () => {
+    const provider = new FakeTransportProvider({}, {
+      '2001': [vehicle('2001', 'v1', -23.58, 3), vehicle('2001', 'v2', -23.61, 0)],
+      '2002': [vehicle('2002', 'v9', -23.62, 2)],
+    });
+
+    const { speech } = await invoke({ favorites, provider }, intentRequest('NextBusIntent'));
+
+    expect(speech).not.toMatch(/\bem (menos de )?\d+ minutos?/);
+    expect(speech).not.toMatch(/chega|previsão de chegada|atras|adiant/i);
+    expect(speech.match(/sem previsão da SPTrans/g)).toHaveLength(3);
+  });
+});
+
 function filtered(name: string, slots: { line?: string; stop?: string }) {
   return alexaRequest({
     type: 'IntentRequest',

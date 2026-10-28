@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -33,7 +33,7 @@ describe('carregamento dos favoritos', () => {
   });
 
   it('rejeita favoritos empacotados com IDs provisórios duplicados e sem referências position', () => {
-    const issues = issuesOf(JSON.parse(require('node:fs').readFileSync(join(__dirname, '..', 'config', 'favorites.json'), 'utf8')));
+    const issues = issuesOf(JSON.parse(readFileSync(join(__dirname, '..', 'config', 'favorites.json'), 'utf8')));
     expect(issues.some(issue => issue.includes('duplicado'))).toBe(true);
     expect(issues.some(issue => issue.includes('exige referências'))).toBe(true);
   });

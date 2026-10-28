@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -32,8 +32,10 @@ describe('carregamento dos favoritos', () => {
     expect(loadFavorites(writeConfig(valid))).toEqual(valid);
   });
 
-  it('o arquivo empacotado em config/favorites.json é válido', () => {
-    expect(() => loadFavorites(join(__dirname, '..', 'config', 'favorites.json'))).not.toThrow();
+  it('rejeita favoritos empacotados com IDs provisórios duplicados e sem referências position', () => {
+    const issues = issuesOf(JSON.parse(readFileSync(join(__dirname, '..', 'config', 'favorites.json'), 'utf8')));
+    expect(issues.some(issue => issue.includes('duplicado'))).toBe(true);
+    expect(issues.some(issue => issue.includes('exige referências'))).toBe(true);
   });
 
   it('falha explicitamente quando o arquivo não existe', () => {
@@ -89,4 +91,17 @@ describe('carregamento dos favoritos', () => {
   it('a mensagem do erro lista os problemas', () => {
     expect(() => loadFavorites(writeConfig({ ...valid, version: 2 }))).toThrow(/version deve ser 1/);
   });
+});
+
+
+describe('SPEC-0002: configuração position', () => {
+  const position = { ...valid, lines: [{ id: '1001', label: 'Linha', arrivalSource: 'position' }], stops: [{ id: '9001', alias: 'Ponto público', lineIds: ['1001'], approaches: [{ lineId: '1001', references: [{ name: 'Referência pública', lat: -23.5, lon: -46.6 }] }] }] };
+  it('aceita referências ordenadas e a origem position', () => { expect(loadFavorites(writeConfig(position))).toEqual(position); });
+  it('preserva forecast implícito', () => { expect(loadFavorites(writeConfig(valid))).toEqual(valid); });
+  it('rejeita position sem approaches', () => { expect(issuesOf({ ...position, stops: [{ id: '9001', alias: 'Ponto', lineIds: ['1001'] }] }).join(' ')).toContain('exige referências'); });
+  it('rejeita referências vazias', () => { expect(issuesOf({ ...position, stops: [{ ...position.stops[0], approaches: [{ lineId: '1001', references: [] }] }] }).join(' ')).toContain('lista não vazia'); });
+  it('rejeita coordenadas fora do intervalo', () => { expect(issuesOf({ ...position, stops: [{ ...position.stops[0], approaches: [{ lineId: '1001', references: [{ name: 'Público', lat: 91, lon: -181 }] }] }] }).filter(x => x.includes('coordenada'))).toHaveLength(2); });
+  it('rejeita approach de linha não associada', () => { expect(issuesOf({ ...position, stops: [{ ...position.stops[0], approaches: [{ lineId: '999', references: [{ name: 'Público', lat: 0, lon: 0 }] }] }] }).join(' ')).toContain('linha não associada'); });
+  it('rejeita origem desconhecida', () => { expect(issuesOf({ ...valid, lines: [{ id: '1001', label: 'Linha', arrivalSource: 'other' }] }).join(' ')).toContain('forecast ou position'); });
+  it('rejeita IDs de pontos duplicados', () => { expect(issuesOf({ ...valid, stops: [valid.stops[0], valid.stops[0]] }).join(' ')).toContain('duplicado'); });
 });

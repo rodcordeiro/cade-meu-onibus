@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import type { FavoriteLine, FavoritesConfig, MonitoredStop } from '../../domain/types';
+import type { FavoriteLine, FavoritesConfig, MonitoredStop, StopApproach, ReferencePoint } from '../../domain/types';
 
 /** Erro de configuração dos favoritos, com a lista completa de problemas encontrados. */
 export class FavoritesConfigError extends Error {
@@ -47,6 +47,7 @@ function parseFavorites(raw: unknown, issues: string[]): FavoritesConfig | undef
   // Unicidade e referências usam os ids brutos, para não perder itens que falharam em outro campo.
   const lineIds = checkUniqueIds(raw.lines, 'lines', issues);
   checkUniqueIds(raw.stops, 'stops', issues);
+  const positionLines = new Set(lines.filter(isDefined).filter(line => line.arrivalSource === 'position').map(line => line.id));
   stops.forEach((stop, index) => {
     if (!stop) return;
     const repeated = new Set<string>();
@@ -58,6 +59,13 @@ function parseFavorites(raw: unknown, issues: string[]): FavoritesConfig | undef
     });
     for (const lineId of stop.lineIds) {
       if (!lineIds.has(lineId)) issues.push(`stops[${index}].lineIds referencia linha inexistente "${lineId}"`);
+      if (positionLines.has(lineId) && !stop.approaches?.some(a => a.lineId === lineId)) issues.push(`stops[${index}].approaches exige referências para linha position "${lineId}"`);
+    }
+    const seenApproaches = new Set<string>();
+    for (const approach of stop.approaches ?? []) {
+      if (!stop.lineIds.includes(approach.lineId)) issues.push(`stops[${index}].approaches referencia linha não associada "${approach.lineId}"`);
+      if (seenApproaches.has(approach.lineId)) issues.push(`stops[${index}].approaches repete linha "${approach.lineId}"`);
+      seenApproaches.add(approach.lineId);
     }
   });
 
@@ -101,8 +109,10 @@ function parseLine(item: unknown, path: string, issues: string[]): FavoriteLine 
   const label = requireText(item.label, `${path}.label`, issues);
   const aliases = optionalTextList(item.aliases, `${path}.aliases`, issues);
   const direction = optionalText(item.direction, `${path}.direction`, issues);
+  const arrivalSource = item.arrivalSource;
+  if (arrivalSource !== undefined && arrivalSource !== 'forecast' && arrivalSource !== 'position') issues.push(`${path}.arrivalSource deve ser forecast ou position`);
   if (id === undefined || label === undefined) return undefined;
-  return { id, label, ...(aliases && { aliases }), ...(direction !== undefined && { direction }) };
+  return { id, label, ...(aliases && { aliases }), ...(direction !== undefined && { direction }), ...(arrivalSource === 'position' && { arrivalSource: 'position' as const }), ...(arrivalSource === 'forecast' && { arrivalSource: 'forecast' as const }) };
 }
 
 function parseStop(item: unknown, path: string, issues: string[]): MonitoredStop | undefined {
@@ -116,8 +126,32 @@ function parseStop(item: unknown, path: string, issues: string[]): MonitoredStop
     requireText(value, itemPath, itemIssues),
   );
   const aliases = optionalTextList(item.aliases, `${path}.aliases`, issues);
+  const approaches = item.approaches === undefined ? undefined : parseApproaches(item.approaches, `${path}.approaches`, issues);
   if (id === undefined || alias === undefined) return undefined;
-  return { id, alias, lineIds: lineIds.filter(isDefined), ...(aliases && { aliases }) };
+  return { id, alias, lineIds: lineIds.filter(isDefined), ...(aliases && { aliases }), ...(approaches && { approaches }) };
+}
+
+function parseApproaches(value: unknown, path: string, issues: string[]): StopApproach[] {
+  return parseList(value, path, issues, (item, itemPath, itemIssues) => {
+    if (!isRecord(item)) { itemIssues.push(`${itemPath} deve ser um objeto`); return undefined; }
+    const lineId = requireText(item.lineId, `${itemPath}.lineId`, itemIssues);
+    const references = parseList(item.references, `${itemPath}.references`, itemIssues, parseReference).filter(isDefined);
+    return lineId === undefined ? undefined : { lineId, references };
+  }).filter(isDefined);
+}
+
+function parseReference(value: unknown, path: string, issues: string[]): ReferencePoint | undefined {
+  if (!isRecord(value)) { issues.push(`${path} deve ser um objeto`); return undefined; }
+  const name = requireText(value.name, `${path}.name`, issues);
+  const lat = coordinate(value.lat, -90, 90, `${path}.lat`, issues);
+  const lon = coordinate(value.lon, -180, 180, `${path}.lon`, issues);
+  return name === undefined || lat === undefined || lon === undefined ? undefined : { name, lat, lon };
+}
+
+function coordinate(value: unknown, min: number, max: number, path: string, issues: string[]): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max) return value;
+  issues.push(`${path} deve ser coordenada válida entre ${min} e ${max}`);
+  return undefined;
 }
 
 function requireText(value: unknown, path: string, issues: string[]): string | undefined {

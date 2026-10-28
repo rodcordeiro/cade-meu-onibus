@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/Previsao/Linha?codigoLinha=1686"
+  },
+  "status": 200,
+  "elapsedMs": 67,
+  "capturedAt": "2026-10-28T12:37:17.851Z",
+  "body": {
+    "hr": "09:37",
+    "ps": []
+  }
+}

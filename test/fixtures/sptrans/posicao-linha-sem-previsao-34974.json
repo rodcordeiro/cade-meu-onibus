@@ -1,0 +1,42 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/Posicao/Linha?codigoLinha=34974"
+  },
+  "status": 200,
+  "elapsedMs": 56,
+  "capturedAt": "2026-10-28T12:37:17.368Z",
+  "body": {
+    "hr": "09:37",
+    "vs": [
+      {
+        "p": "48800",
+        "a": true,
+        "ta": "2026-10-28T12:37:05Z",
+        "sv": null,
+        "is": null
+      },
+      {
+        "p": "48080",
+        "a": true,
+        "ta": "2026-10-28T12:36:35Z",
+        "sv": null,
+        "is": null
+      },
+      {
+        "p": "48101",
+        "a": true,
+        "ta": "2026-10-28T12:36:39Z",
+        "sv": null,
+        "is": null
+      },
+      {
+        "p": "48077",
+        "a": true,
+        "ta": "2026-10-28T12:36:42Z",
+        "sv": null,
+        "is": null
+      }
+    ]
+  }
+}

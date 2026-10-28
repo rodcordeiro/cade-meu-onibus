@@ -6,10 +6,11 @@
 import { join } from 'node:path';
 import type { RequestEnvelope } from 'ask-sdk-model';
 import { createSkill } from '../alexa/skill';
-import type { ArrivalPrediction, RequestContext, TransportProvider } from '../domain/types';
+import type { ArrivalPrediction, RequestContext, TransportProvider, VehiclePosition } from '../domain/types';
 import { loadFavorites } from '../infrastructure/config/favorites-loader';
 
-const favorites = loadFavorites(join(__dirname, '..', '..', 'config', 'favorites.json'));
+// Execução local usa o exemplo versionado (não operacional), independente de config/favorites.json.
+const favorites = loadFavorites(join(__dirname, '..', '..', 'config', 'favorites.example.json'), { allowExample: true });
 
 class DemoTransportProvider implements TransportProvider {
   async getArrivals(stopId: string, { now }: RequestContext): Promise<ArrivalPrediction[]> {
@@ -22,6 +23,11 @@ class DemoTransportProvider implements TransportProvider {
         observedAt: now,
       })),
     );
+  }
+
+  /** Demonstração sem posições fictícias: nenhuma coordenada é inventada. */
+  async getVehiclePositions(): Promise<VehiclePosition[]> {
+    return [];
   }
 }
 

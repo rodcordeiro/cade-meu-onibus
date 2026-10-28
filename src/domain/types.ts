@@ -64,8 +64,11 @@ export interface VehicleSighting {
   observedAt: Date;
 }
 
-/** Cobertura da consulta: todos os pontos responderam, apenas alguns, ou nenhum. */
-export type ArrivalStatus = 'complete' | 'partial' | 'unavailable';
+/**
+ * Cobertura da consulta: todos os pontos responderam, apenas alguns, nenhum,
+ * ou não havia associação ponto–linha favorita a consultar (`no-associations`).
+ */
+export type ArrivalStatus = 'complete' | 'partial' | 'unavailable' | 'no-associations';
 
 /** Resultado agregado de uma consulta de chegadas. */
 export interface ArrivalResult {
@@ -75,6 +78,24 @@ export interface ArrivalResult {
   status: ArrivalStatus;
   /** Quantidade de previsões do par ponto–linha favorito descartadas por estarem fora da janela. */
   outsideWindowCount: number;
+  /** No máximo um avistamento por associação ponto–linha `position`; sem `arrivalAt` nem ordenação por chegada. */
+  sightings: VehicleSighting[];
+  /** Associações `position` cujas posições foram obtidas, com ou sem avistamento elegível. */
+  positionAssociations: StopLineAssociation[];
+  /** Linhas `position` cuja consulta de posições falhou. */
+  failedLineIds: string[];
+}
+
+/** Associação entre um ponto monitorado e uma linha favorita. */
+export interface StopLineAssociation {
+  stopId: string;
+  lineId: string;
+}
+
+/** Filtro opcional de linha e ponto favoritos de uma consulta (também guardado na sessão Alexa). */
+export interface QueryFilter {
+  lineId?: string;
+  stopId?: string;
 }
 
 /** Contexto de uma requisição ao provedor, independente de Alexa/AWS. */
@@ -85,4 +106,9 @@ export interface RequestContext {
 /** Porta para o provedor de previsões (SPTrans Olho Vivo no MVP). */
 export interface TransportProvider {
   getArrivals(stopId: string, context: RequestContext): Promise<ArrivalPrediction[]>;
+  /**
+   * Posições observadas dos veículos de uma linha (uma consulta por linha).
+   * Devolve só observações completas; o frescor é decidido pela política de domínio.
+   */
+  getVehiclePositions(lineId: string, context: RequestContext): Promise<VehiclePosition[]>;
 }

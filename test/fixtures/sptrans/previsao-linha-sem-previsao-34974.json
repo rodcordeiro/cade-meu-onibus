@@ -1,0 +1,13 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/Previsao/Linha?codigoLinha=34974"
+  },
+  "status": 200,
+  "elapsedMs": 22,
+  "capturedAt": "2026-10-28T12:37:17.392Z",
+  "body": {
+    "hr": "09:37",
+    "ps": []
+  }
+}

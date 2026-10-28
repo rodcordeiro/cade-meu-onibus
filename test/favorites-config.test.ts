@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { FavoritesConfigError, loadFavorites } from '../src/infrastructure/config/favorites-loader';
+import { checkOperationalFavorites } from '../src/infrastructure/config/validate-favorites';
 
 const writeConfig = (content: unknown): string => {
   const dir = mkdtempSync(join(tmpdir(), 'favorites-'));
@@ -32,10 +33,11 @@ describe('carregamento dos favoritos', () => {
     expect(loadFavorites(writeConfig(valid))).toEqual(valid);
   });
 
-  it('rejeita favoritos empacotados com IDs provisórios duplicados e sem referências position', () => {
-    const issues = issuesOf(JSON.parse(readFileSync(join(__dirname, '..', 'config', 'favorites.json'), 'utf8')));
-    expect(issues.some(issue => issue.includes('duplicado'))).toBe(true);
-    expect(issues.some(issue => issue.includes('exige referências'))).toBe(true);
+  it('rejeita códigos não numéricos de linha e ponto (códigos oficiais SPTrans)', () => {
+    expect(issuesOf({ ...valid, lines: [{ id: '875A-10', label: 'Linha' }], stops: [{ id: 'EXEMPLO-PONTO-2', alias: 'ponto', lineIds: ['875A-10'] }] })).toEqual([
+      'lines[0].id "875A-10" deve ser o código numérico oficial SPTrans',
+      'stops[0].id "EXEMPLO-PONTO-2" deve ser o código numérico oficial SPTrans',
+    ]);
   });
 
   it('falha explicitamente quando o arquivo não existe', () => {
@@ -104,4 +106,53 @@ describe('SPEC-0002: configuração position', () => {
   it('rejeita approach de linha não associada', () => { expect(issuesOf({ ...position, stops: [{ ...position.stops[0], approaches: [{ lineId: '999', references: [{ name: 'Público', lat: 0, lon: 0 }] }] }] }).join(' ')).toContain('linha não associada'); });
   it('rejeita origem desconhecida', () => { expect(issuesOf({ ...valid, lines: [{ id: '1001', label: 'Linha', arrivalSource: 'other' }] }).join(' ')).toContain('forecast ou position'); });
   it('rejeita IDs de pontos duplicados', () => { expect(issuesOf({ ...valid, stops: [valid.stops[0], valid.stops[0]] }).join(' ')).toContain('duplicado'); });
+});
+
+describe('ticket #34: exemplo versionado x configuração operacional', () => {
+  const examplePath = join(__dirname, '..', 'config', 'favorites.example.json');
+
+  it('o exemplo versionado é válido e marcado como não operacional', () => {
+    const raw = JSON.parse(readFileSync(examplePath, 'utf8'));
+    expect(raw.example).toBe(true);
+    const config = loadFavorites(examplePath, { allowExample: true });
+    expect(config.lines.some(line => line.arrivalSource === 'position')).toBe(true);
+  });
+
+  it('o carregamento operacional recusa um documento marcado como exemplo', () => {
+    expect(() => loadFavorites(examplePath)).toThrow(/exemplo/);
+  });
+
+  it('rejeita marcador example que não seja booleano', () => {
+    expect(issuesOf({ ...valid, example: 'sim' })).toEqual(['example deve ser booleano']);
+  });
+
+  it('example: false é aceito como operacional', () => {
+    expect(loadFavorites(writeConfig({ ...valid, example: false }))).toEqual(valid);
+  });
+
+  it('reporta juntos IDs duplicados e linha position sem approaches', () => {
+    const issues = issuesOf({
+      version: 1,
+      lines: [{ id: '1001', label: 'Linha', arrivalSource: 'position' }],
+      stops: [{ id: '9001', alias: 'a', lineIds: ['1001'] }, { id: '9001', alias: 'b', lineIds: ['1001'] }],
+    });
+    expect(issues).toContain('stops[1].id "9001" duplicado');
+    expect(issues).toContain('stops[0].approaches exige referências para linha position "1001"');
+  });
+});
+
+describe('ticket #34: guarda de build (validate:favorites)', () => {
+  it('aprova configuração operacional válida com resumo', () => {
+    expect(checkOperationalFavorites(writeConfig(valid))).toEqual({ ok: true, message: expect.stringContaining('1 ponto(s), 1 linha(s)') });
+  });
+
+  it('reprova o exemplo versionado com mensagem clara', () => {
+    const result = checkOperationalFavorites(join(__dirname, '..', 'config', 'favorites.example.json'));
+    expect(result.ok).toBe(false);
+    expect(result.message).toMatch(/exemplo/);
+  });
+
+  it('reprova arquivo ausente', () => {
+    expect(checkOperationalFavorites(join(tmpdir(), 'nao-existe', 'favorites.json')).ok).toBe(false);
+  });
 });

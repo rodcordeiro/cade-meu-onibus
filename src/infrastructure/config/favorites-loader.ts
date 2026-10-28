@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { FavoriteLine, FavoritesConfig, MonitoredStop, StopApproach, ReferencePoint } from '../../domain/types';
+import { isOfficialSptransCode } from '../transport/sptrans-code';
 
 /** Erro de configuração dos favoritos, com a lista completa de problemas encontrados. */
 export class FavoritesConfigError extends Error {
@@ -12,8 +13,21 @@ export class FavoritesConfigError extends Error {
   }
 }
 
-/** Lê e valida integralmente o JSON de favoritos; lança `FavoritesConfigError` se inválido. */
-export function loadFavorites(path: string): FavoritesConfig {
+/** Opções de carregamento dos favoritos. */
+export interface LoadFavoritesOptions {
+  /**
+   * Aceita documentos marcados com `"example": true` (exemplo versionado, não operacional).
+   * Só testes e execução local devem usar; o padrão recusa exemplos para que a Lambda e o build
+   * nunca usem configuração fictícia silenciosamente.
+   */
+  allowExample?: boolean;
+}
+
+/**
+ * Lê e valida integralmente o JSON de favoritos; lança `FavoritesConfigError` se inválido.
+ * Por padrão valida como configuração operacional (recusa o exemplo versionado).
+ */
+export function loadFavorites(path: string, options: LoadFavoritesOptions = {}): FavoritesConfig {
   let text: string;
   try {
     text = readFileSync(path, 'utf8');
@@ -30,6 +44,9 @@ export function loadFavorites(path: string): FavoritesConfig {
 
   const issues: string[] = [];
   const config = parseFavorites(raw, issues);
+  if (isRecord(raw) && raw.example === true && !options.allowExample) {
+    issues.push('documento marcado como exemplo ("example": true) não pode ser usado como configuração operacional');
+  }
   if (issues.length > 0 || !config) throw new FavoritesConfigError(path, issues);
   return config;
 }
@@ -40,6 +57,7 @@ function parseFavorites(raw: unknown, issues: string[]): FavoritesConfig | undef
     return undefined;
   }
   if (raw.version !== 1) issues.push('version deve ser 1');
+  if (raw.example !== undefined && typeof raw.example !== 'boolean') issues.push('example deve ser booleano');
 
   const lines = parseList(raw.lines, 'lines', issues, parseLine);
   const stops = parseList(raw.stops, 'stops', issues, parseStop);
@@ -105,7 +123,7 @@ function parseLine(item: unknown, path: string, issues: string[]): FavoriteLine 
     issues.push(`${path} deve ser um objeto`);
     return undefined;
   }
-  const id = requireText(item.id, `${path}.id`, issues);
+  const id = requireOfficialCode(item.id, `${path}.id`, issues);
   const label = requireText(item.label, `${path}.label`, issues);
   const aliases = optionalTextList(item.aliases, `${path}.aliases`, issues);
   const direction = optionalText(item.direction, `${path}.direction`, issues);
@@ -120,7 +138,7 @@ function parseStop(item: unknown, path: string, issues: string[]): MonitoredStop
     issues.push(`${path} deve ser um objeto`);
     return undefined;
   }
-  const id = requireText(item.id, `${path}.id`, issues);
+  const id = requireOfficialCode(item.id, `${path}.id`, issues);
   const alias = requireText(item.alias, `${path}.alias`, issues);
   const lineIds = parseList(item.lineIds, `${path}.lineIds`, issues, (value, itemPath, itemIssues) =>
     requireText(value, itemPath, itemIssues),
@@ -158,6 +176,14 @@ function requireText(value: unknown, path: string, issues: string[]): string | u
   if (typeof value === 'string' && value.trim() !== '') return value;
   issues.push(`${path} deve ser um texto não vazio`);
   return undefined;
+}
+
+/** Códigos oficiais SPTrans de linha (`CodigoLinha`) e ponto (`CodigoParada`) são inteiros, mantidos como texto. */
+function requireOfficialCode(value: unknown, path: string, issues: string[]): string | undefined {
+  const code = requireText(value, path, issues);
+  // O código segue adiante mesmo inválido, para que as verificações de associação também sejam reportadas.
+  if (code !== undefined && !isOfficialSptransCode(code)) issues.push(`${path} "${code}" deve ser o código numérico oficial SPTrans`);
+  return code;
 }
 
 function optionalText(value: unknown, path: string, issues: string[]): string | undefined {

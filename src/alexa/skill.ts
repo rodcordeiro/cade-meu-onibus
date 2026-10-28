@@ -10,7 +10,7 @@ import {
 import type { Response } from 'ask-sdk-model';
 import { ArrivalService } from '../application/arrival-service';
 import { MAX_ANNOUNCED_ARRIVALS, QUERY_WINDOW_MINUTES } from '../domain/arrival-policy';
-import type { FavoritesConfig, TransportProvider } from '../domain/types';
+import type { FavoritesConfig, QueryFilter, TransportProvider } from '../domain/types';
 import { SpeechPresenter } from './speech-presenter';
 import { resolveFilter } from './filter-resolution';
 
@@ -27,6 +27,7 @@ const HELP_SPEECH =
   `Você pode perguntar: quais são os próximos ônibus? Eu digo até ${MAX_ANNOUNCED_ARRIVALS} chegadas nos próximos ${QUERY_WINDOW_MINUTES} minutos nos seus pontos favoritos.`;
 const HELP_REPROMPT = 'Quer saber quais são os próximos ônibus?';
 const FALLBACK_SPEECH = 'Não entendi. Você pode perguntar: quais são os próximos ônibus?';
+const FOLLOWUP_REPROMPT = 'Quer consultar outra linha ou ponto?';
 const ERROR_SPEECH = 'Desculpe, algo deu errado. Tente novamente em instantes.';
 
 const isIntent =
@@ -51,7 +52,10 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
   const answerGeneralQuery = async ({ responseBuilder }: HandlerInput): Promise<Response> => {
     const result = await service.query({ now: now() });
     // Tempo relativo calculado no momento de formular a fala, não no início da consulta.
-    return responseBuilder.speak(escapeSsml(presenter.present(result, now()))).withShouldEndSession(true).getResponse();
+    // Sessão aberta com reprompt para permitir acompanhamento (SPEC-0001 história 7, #37).
+    return responseBuilder.speak(escapeSsml(presenter.present(result, now())))
+      .reprompt(FOLLOWUP_REPROMPT)
+      .withShouldEndSession(false).getResponse();
   };
 
   const launchHandler: RequestHandler = { canHandle: isRequestType('LaunchRequest'), handle: answerGeneralQuery };
@@ -78,14 +82,12 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
         : typeof previous.lineId === 'string' ? previous.lineId : undefined;
       const stopId = stopResolution?.kind === 'resolved' ? stopResolution.id
         : typeof previous.stopId === 'string' ? previous.stopId : undefined;
+      const filter: QueryFilter = { ...(lineId && { lineId }), ...(stopId && { stopId }) };
       // Alexa session attributes belong to this session only, never to a process-global cache.
-      input.attributesManager.setSessionAttributes({
-        ...(lineId && { lineId }),
-        ...(stopId && { stopId }),
-      });
-      const result = await service.query({ now: now(), ...(lineId && { lineId }), ...(stopId && { stopId }) });
-      return input.responseBuilder.speak(escapeSsml(presenter.present(result, now())))
-        .reprompt('Quer consultar outra linha ou ponto?')
+      input.attributesManager.setSessionAttributes({ ...filter });
+      const result = await service.query({ now: now(), ...filter });
+      return input.responseBuilder.speak(escapeSsml(presenter.present(result, now(), filter)))
+        .reprompt(FOLLOWUP_REPROMPT)
         .withShouldEndSession(false).getResponse();
     },
   };

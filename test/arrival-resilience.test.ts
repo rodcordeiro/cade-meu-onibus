@@ -8,6 +8,7 @@ const favorites: FavoritesConfig = {
   lines: [{ id: '100', label: 'Linha 100' }],
   stops: Array.from({ length: 5 }, (_, i) => ({ id: String(i + 1), alias: 'Ponto ' + (i + 1), lineIds: ['100'] })),
 };
+const noPositions = async () => [];
 const prediction = (stopId: string): ArrivalPrediction => ({
   stopId, lineId: '100', arrivalAt: new Date(now.getTime() + 60000), observedAt: now,
 });
@@ -22,6 +23,7 @@ describe('limites de consulta', () => {
         active--;
         return [prediction(id)];
       },
+      getVehiclePositions: noPositions,
     };
     const result = await new ArrivalService(favorites, provider, { maxConcurrency: 2 }).query({ now });
     expect(peak).toBeLessThanOrEqual(2);
@@ -32,6 +34,7 @@ describe('limites de consulta', () => {
   it('responde com falha parcial quando uma consulta excede deadline', async () => {
     const provider: TransportProvider = {
       getArrivals: async id => id === '2' ? new Promise<ArrivalPrediction[]>(() => {}) : [prediction(id)],
+      getVehiclePositions: noPositions,
     };
     const result = await new ArrivalService(favorites, provider, { maxConcurrency: 2, deadlineMs: 30 }).query({ now });
     expect(result.status).toBe('partial');
@@ -40,9 +43,16 @@ describe('limites de consulta', () => {
   });
 
   it('distingue indisponibilidade total de ausência de previsão', async () => {
-    const unavailable: TransportProvider = { getArrivals: async () => { throw Error('falha'); } };
-    const empty: TransportProvider = { getArrivals: async () => [] };
+    const unavailable: TransportProvider = { getArrivals: async () => { throw Error('falha'); }, getVehiclePositions: noPositions };
+    const empty: TransportProvider = { getArrivals: async () => [], getVehiclePositions: noPositions };
     expect((await new ArrivalService(favorites, unavailable).query({ now })).status).toBe('unavailable');
     expect((await new ArrivalService(favorites, empty).query({ now })).status).toBe('complete');
+  });
+
+  it('zero associações ponto–linha não é cobertura completa (#36)', async () => {
+    const empty: TransportProvider = { getArrivals: async () => [], getVehiclePositions: noPositions };
+    const result = await new ArrivalService(favorites, empty).query({ now, lineId: '999' });
+    expect(result.status).toBe('no-associations');
+    expect(result.queriedStopIds).toEqual([]);
   });
 });

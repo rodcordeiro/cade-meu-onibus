@@ -8,10 +8,13 @@
     "node": ">=22"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "npm run compile && npm run validate:favorites:compiled",
+    "compile": "tsc -p tsconfig.build.json",
+    "validate:favorites": "npm run compile && npm run validate:favorites:compiled",
+    "validate:favorites:compiled": "node dist/infrastructure/config/validate-favorites.js config/favorites.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "invoke:local": "npm run build && node dist/dev/invoke-local.js"
+    "invoke:local": "npm run compile && node dist/dev/invoke-local.js"
   },
   "dependencies": {
     "ask-sdk-core": "^2.14.0",

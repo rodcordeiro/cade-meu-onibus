@@ -6,7 +6,7 @@
 import { join } from 'node:path';
 import type { RequestEnvelope } from 'ask-sdk-model';
 import { createSkill } from '../alexa/skill';
-import type { ArrivalPrediction, RequestContext, TransportProvider } from '../domain/types';
+import type { ArrivalPrediction, RequestContext, TransportProvider, VehiclePosition } from '../domain/types';
 import { loadFavorites } from '../infrastructure/config/favorites-loader';
 
 // Execução local usa o exemplo versionado (não operacional), independente de config/favorites.json.
@@ -23,6 +23,11 @@ class DemoTransportProvider implements TransportProvider {
         observedAt: now,
       })),
     );
+  }
+
+  /** Demonstração sem posições fictícias: nenhuma coordenada é inventada. */
+  async getVehiclePositions(): Promise<VehiclePosition[]> {
+    return [];
   }
 }
 

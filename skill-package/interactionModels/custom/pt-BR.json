@@ -16,11 +16,71 @@
             "tem ônibus chegando"
           ]
         },
-        { "name": "AMAZON.HelpIntent", "samples": [] },
-        { "name": "AMAZON.CancelIntent", "samples": [] },
-        { "name": "AMAZON.StopIntent", "samples": [] },
-        { "name": "AMAZON.FallbackIntent", "samples": [] },
-        { "name": "AMAZON.NavigateHomeIntent", "samples": [] }
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.FallbackIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.NavigateHomeIntent",
+          "samples": []
+        },
+        {
+          "name": "NextBusByLineIntent",
+          "slots": [
+            {
+              "name": "line",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "quando passa a linha {line}",
+            "próximos ônibus da linha {line}",
+            "e a linha {line}"
+          ]
+        },
+        {
+          "name": "NextBusByStopIntent",
+          "slots": [
+            {
+              "name": "stop",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "quando passa ônibus no ponto {stop}",
+            "próximos ônibus no ponto {stop}",
+            "e no ponto {stop}"
+          ]
+        },
+        {
+          "name": "NextBusByLineAndStopIntent",
+          "slots": [
+            {
+              "name": "line",
+              "type": "AMAZON.SearchQuery"
+            },
+            {
+              "name": "stop",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "quando passa a linha {line} no ponto {stop}",
+            "próximos ônibus da linha {line} no ponto {stop}"
+          ]
+        }
       ],
       "types": []
     }

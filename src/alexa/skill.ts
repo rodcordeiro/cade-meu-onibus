@@ -27,6 +27,7 @@ const HELP_SPEECH =
   `Você pode perguntar: quais são os próximos ônibus? Eu digo até ${MAX_ANNOUNCED_ARRIVALS} chegadas nos próximos ${QUERY_WINDOW_MINUTES} minutos nos seus pontos favoritos.`;
 const HELP_REPROMPT = 'Quer saber quais são os próximos ônibus?';
 const FALLBACK_SPEECH = 'Não entendi. Você pode perguntar: quais são os próximos ônibus?';
+const FOLLOWUP_REPROMPT = 'Quer consultar outra linha ou ponto?';
 const ERROR_SPEECH = 'Desculpe, algo deu errado. Tente novamente em instantes.';
 
 const isIntent =
@@ -51,7 +52,10 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
   const answerGeneralQuery = async ({ responseBuilder }: HandlerInput): Promise<Response> => {
     const result = await service.query({ now: now() });
     // Tempo relativo calculado no momento de formular a fala, não no início da consulta.
-    return responseBuilder.speak(escapeSsml(presenter.present(result, now()))).withShouldEndSession(true).getResponse();
+    // Sessão aberta com reprompt para permitir acompanhamento (SPEC-0001 história 7, #37).
+    return responseBuilder.speak(escapeSsml(presenter.present(result, now())))
+      .reprompt(FOLLOWUP_REPROMPT)
+      .withShouldEndSession(false).getResponse();
   };
 
   const launchHandler: RequestHandler = { canHandle: isRequestType('LaunchRequest'), handle: answerGeneralQuery };
@@ -83,9 +87,10 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
         ...(lineId && { lineId }),
         ...(stopId && { stopId }),
       });
-      const result = await service.query({ now: now(), ...(lineId && { lineId }), ...(stopId && { stopId }) });
-      return input.responseBuilder.speak(escapeSsml(presenter.present(result, now())))
-        .reprompt('Quer consultar outra linha ou ponto?')
+      const filter = { ...(lineId && { lineId }), ...(stopId && { stopId }) };
+      const result = await service.query({ now: now(), ...filter });
+      return input.responseBuilder.speak(escapeSsml(presenter.present(result, now(), filter)))
+        .reprompt(FOLLOWUP_REPROMPT)
         .withShouldEndSession(false).getResponse();
     },
   };

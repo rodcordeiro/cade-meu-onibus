@@ -64,8 +64,11 @@ export interface VehicleSighting {
   observedAt: Date;
 }
 
-/** Cobertura da consulta: todos os pontos responderam, apenas alguns, ou nenhum. */
-export type ArrivalStatus = 'complete' | 'partial' | 'unavailable';
+/**
+ * Cobertura da consulta: todos os pontos responderam, apenas alguns, nenhum,
+ * ou não havia associação ponto–linha favorita a consultar (`no-associations`).
+ */
+export type ArrivalStatus = 'complete' | 'partial' | 'unavailable' | 'no-associations';
 
 /** Resultado agregado de uma consulta de chegadas. */
 export interface ArrivalResult {

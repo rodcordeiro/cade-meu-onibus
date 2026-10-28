@@ -41,6 +41,8 @@ export class SpeechPresenter {
   private describeArrivals(result: ArrivalResult, now: Date): string {
     const items = result.predictions.map((p) => this.describe(p, now));
     if (items.length === 0) {
+      // Nenhum ponto de previsão respondeu: ausência de previsão não é evidência de que não há ônibus.
+      if (result.failedStopIds.length === result.queriedStopIds.length) return 'Não consegui consultar as previsões agora.';
       return result.outsideWindowCount > 0
         ? `Nenhum ônibus das suas linhas favoritas tem previsão para os próximos ${QUERY_WINDOW_MINUTES} minutos.`
         : 'Não encontrei previsões disponíveis para suas linhas favoritas agora. Isso não garante que não haja ônibus a caminho.';

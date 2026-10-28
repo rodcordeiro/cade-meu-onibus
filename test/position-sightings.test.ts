@@ -127,6 +127,22 @@ describe('fala de avistamentos sem ETA (#21)', () => {
         'Não consegui consultar a posição da 575C-10, então a lista pode estar incompleta.',
     );
   });
+
+  it('quando toda previsão falha mas a posição responde, não afirma que não há previsões', async () => {
+    const provider = new FakeTransportProvider(
+      { '9001': new Error('500') },
+      { '2001': [vehicle('2001', 'v1', -23.58, 2)] },
+    );
+
+    const { speech } = await invoke({ favorites, provider }, filtered('NextBusByStopIntent', { stop: 'ponto da padaria' }));
+
+    expect(speech).not.toContain('Não encontrei previsões disponíveis');
+    expect(speech).toBe(
+      'Não consegui consultar as previsões agora. ' +
+        '575C-10 no ponto da padaria, sem previsão da SPTrans: ônibus visto há 2 minutos perto de Parada Beta, faltando 1 referência até o ponto. ' +
+        'Não consegui consultar o ponto da padaria, então a lista pode estar incompleta.',
+    );
+  });
 });
 
 describe('consultas mistas e continuidade de sessão (#22)', () => {

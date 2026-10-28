@@ -45,6 +45,25 @@ export interface ArrivalPrediction {
   scheduledAt?: Date;
 }
 
+/** Posição observada de um veículo, sem previsão de chegada. */
+export interface VehiclePosition {
+  lineId: string;
+  vehicleId: string;
+  lat: number;
+  lon: number;
+  observedAt: Date;
+}
+
+/** Último avistamento elegível para uma associação ponto–linha. */
+export interface VehicleSighting {
+  stopId: string;
+  lineId: string;
+  vehicleId: string;
+  referenceName: string;
+  referencesRemaining: number;
+  observedAt: Date;
+}
+
 /** Cobertura da consulta: todos os pontos responderam, apenas alguns, ou nenhum. */
 export type ArrivalStatus = 'complete' | 'partial' | 'unavailable';
 

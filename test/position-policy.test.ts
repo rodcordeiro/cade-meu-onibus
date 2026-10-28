@@ -36,6 +36,19 @@ describe('seleção de avistamento por posição (#19)', () => {
     expect(select([vehicle('skew', 0, -30_000)])?.vehicleId).toBe('skew');
     expect(select([vehicle('edge', 0, -60_000)])?.vehicleId).toBe('edge');
   });
+  it('não anuncia como junto ao ponto o ônibus que já passou dele (história 7)', () => {
+    // ~150 m depois do ponto monitorado, no prolongamento do trajeto; ~1 grau de longitude ≈ 102 km nesta latitude.
+    const passed = { ...vehicle('passed', 2), lon: -46.58 + 150 / 102_000 };
+    expect(haversineMeters(passed, refs[2]!)).toBeGreaterThan(140);
+    expect(select([passed])).toBeUndefined();
+    const approaching = { ...vehicle('approaching', 2), lon: -46.58 - 150 / 102_000 };
+    expect(select([approaching])).toMatchObject({ vehicleId: 'approaching', referencesRemaining: 0 });
+  });
+  it('com uma única referência, mantém o casamento só por distância', () => {
+    const only = [refs[2]!];
+    const passed = { ...vehicle('passed', 2), lon: -46.58 + 150 / 102_000 };
+    expect(selectVehicleSighting('900', '100', only, [passed], now)?.vehicleId).toBe('passed');
+  });
   it('descarta veículo distante e de outra linha', () => {
     expect(select([{ ...vehicle('far', 0), lat: 0, lon: 0 }, { ...vehicle('other', 0), lineId: '200' }])).toBeUndefined();
   });

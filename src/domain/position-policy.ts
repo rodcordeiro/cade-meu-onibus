@@ -5,6 +5,11 @@ import type { ReferencePoint, VehiclePosition, VehicleSighting } from './types';
 export const MAX_POSITION_AGE_MINUTES = MAX_OBSERVATION_AGE_MINUTES;
 export const MAX_POSITION_AGE_MS = MAX_OBSERVATION_AGE_MS;
 export const MAX_REFERENCE_DISTANCE_METERS = 300;
+/**
+ * Hipótese (ADR-0009): folga, em metros, para ruído de GPS e desvio lateral ao decidir se um veículo
+ * casado com o ponto monitorado já passou dele.
+ */
+export const PASSED_STOP_TOLERANCE_METERS = 50;
 const EARTH_RADIUS_METERS = 6_371_000;
 
 /** Distância geodésica aproximada em metros, sem dependências externas. */
@@ -52,6 +57,7 @@ export function selectVehicleSighting(
       }
     }
     if (nearestIndex < 0) continue;
+    if (nearestIndex === references.length - 1 && hasPassedStop(vehicle, references)) continue;
     candidates.push({
       stopId, lineId, vehicleId: vehicle.vehicleId,
       referenceName: references[nearestIndex]!.name,
@@ -66,4 +72,16 @@ export function selectVehicleSighting(
     (a.vehicleId < b.vehicleId ? -1 : a.vehicleId > b.vehicleId ? 1 : 0),
   );
   return candidates[0];
+}
+
+/**
+ * Heurística geométrica (hipótese, ADR-0009): um veículo casado com o ponto monitorado já o passou
+ * quando está mais longe da referência anterior do que o próprio ponto, além da folga.
+ * Com uma única referência não há direção conhecida, e o veículo nunca é considerado como tendo passado.
+ */
+function hasPassedStop(vehicle: Pick<ReferencePoint, 'lat' | 'lon'>, references: readonly ReferencePoint[]): boolean {
+  if (references.length < 2) return false;
+  const stop = references[references.length - 1]!;
+  const previous = references[references.length - 2]!;
+  return haversineMeters(vehicle, previous) > haversineMeters(previous, stop) + PASSED_STOP_TOLERANCE_METERS;
 }

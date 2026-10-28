@@ -24,9 +24,10 @@ Restrições que seguem valendo:
 
 ### Hipóteses a validar
 Os valores abaixo ainda não foram medidos.
-- Frescor: 5 minutos, o mesmo valor proposto no spike.
+- Frescor: 5 minutos, o mesmo valor proposto no spike, com tolerância de 60 s para relógio do provedor adiantado (igual à previsão).
 - Raio: 300 m.
 - Lista de referência: de 3 a 6 pontos.
+- Ônibus que já passou do ponto: um veículo casado com o ponto monitorado (última referência) é descartado quando está mais longe da referência anterior do que o próprio ponto, com folga de 50 m (`dist(veículo, anterior) > dist(anterior, ponto) + 50 m`). A heurística supõe trajeto aproximadamente retilíneo entre as duas últimas referências; curvas fechadas ou retornos podem gerar falso positivo ou negativo. Com uma única referência, não há direção conhecida e vale apenas o raio.
 - Formato da resposta de `Posicao/Linha`: não capturado em fixture até agora.
 
 ## Alternativas consideradas

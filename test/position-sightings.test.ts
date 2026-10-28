@@ -83,6 +83,52 @@ describe('consulta com linhas position (SPEC-0002, #20)', () => {
   });
 });
 
+describe('fala de avistamentos sem ETA (#21)', () => {
+  it('anuncia referência, referências restantes, idade e ausência de previsão; sem elegível diz que não viu ônibus perto', async () => {
+    const provider = new FakeTransportProvider({}, { '2001': [vehicle('2001', 'v1', -23.58, 2)] });
+
+    const { speech } = await invoke({ favorites, provider }, filtered('NextBusByLineIntent', { line: '575C-10' }));
+
+    expect(speech).toBe(
+      '575C-10 no ponto da padaria, sem previsão da SPTrans: ônibus visto há 2 minutos perto de Parada Beta, faltando 1 referência até o ponto. ' +
+        '575C-10 no ponto do metrô: sem previsão e sem ônibus visto perto.',
+    );
+  });
+
+  it('anuncia previsões antes dos avistamentos, preservando as cinco chegadas', async () => {
+    const provider = new FakeTransportProvider(
+      { '9001': [2, 4, 6, 8, 10, 12].map((m) => prediction('9001', '1001', m)) },
+      { '2001': [vehicle('2001', 'v1', -23.59, 0)], '2002': [vehicle('2002', 'v9', -23.64, 3)] },
+    );
+
+    const { speech } = await invoke({ favorites, provider }, intentRequest('NextBusIntent'));
+
+    expect(speech).toBe(
+      'Próximos ônibus: 875A-10 no ponto da padaria em 2 minutos; 875A-10 no ponto da padaria em 4 minutos; ' +
+        '875A-10 no ponto da padaria em 6 minutos; 875A-10 no ponto da padaria em 8 minutos; ' +
+        'e 875A-10 no ponto da padaria em 10 minutos. ' +
+        '575C-10 no ponto da padaria, sem previsão da SPTrans: ônibus visto há menos de 1 minuto perto de ponto da padaria, já junto ao ponto. ' +
+        '575C-10 no ponto do metrô: sem previsão e sem ônibus visto perto. ' +
+        '407Y-10 no ponto do metrô, sem previsão da SPTrans: ônibus visto há 3 minutos perto de Parada Delta, faltando 1 referência até o ponto.',
+    );
+  });
+
+  it('comunica parcialidade quando a posição de uma linha falha, mantendo os demais resultados', async () => {
+    const provider = new FakeTransportProvider(
+      { '9001': [prediction('9001', '1001', 5)] },
+      { '2001': new Error('timeout'), '2002': [vehicle('2002', 'v9', -23.64, 1)] },
+    );
+
+    const { speech } = await invoke({ favorites, provider }, intentRequest('NextBusIntent'));
+
+    expect(speech).toBe(
+      'Próximo ônibus: 875A-10 no ponto da padaria em 5 minutos. ' +
+        '407Y-10 no ponto do metrô, sem previsão da SPTrans: ônibus visto há 1 minuto perto de Parada Delta, faltando 1 referência até o ponto. ' +
+        'Não consegui consultar a posição da 575C-10, então a lista pode estar incompleta.',
+    );
+  });
+});
+
 function filtered(name: string, slots: { line?: string; stop?: string }) {
   return alexaRequest({
     type: 'IntentRequest',

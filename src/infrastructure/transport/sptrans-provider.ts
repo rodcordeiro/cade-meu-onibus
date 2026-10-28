@@ -1,9 +1,8 @@
+import { isFreshObservation } from '../../domain/observation-freshness';
 import type { ArrivalPrediction, RequestContext, TransportProvider, VehiclePosition } from '../../domain/types';
 
 const BASE = 'https://api.olhovivo.sptrans.com.br/v2.1';
 const ZONE = 'America/Sao_Paulo';
-/** Limite conservador para não anunciar telemetria antiga como previsão atual. */
-export const MAX_FORECAST_OBSERVATION_AGE_MS = 5 * 60_000;
 type Fetcher = typeof fetch;
 
 export class SptransTransportProvider implements TransportProvider {
@@ -138,8 +137,8 @@ export function parseArrivals(raw: unknown, requestedStopId: string, now: Date):
       if (typeof vehicle.t !== 'string' || typeof vehicle.ta !== 'string') continue;
       const observedAt = new Date(vehicle.ta);
       const arrivalAt = resolveArrivalDate(data.hr, vehicle.t, now);
-      const ageMs = now.getTime() - observedAt.getTime();
-      if (!Number.isFinite(ageMs) || ageMs < -60_000 || ageMs > MAX_FORECAST_OBSERVATION_AGE_MS || !arrivalAt) continue;
+      // Frescor é regra de domínio compartilhada com posições: telemetria antiga não vira previsão atual.
+      if (!isFreshObservation(observedAt, now) || !arrivalAt) continue;
       predictions.push({
         stopId: requestedStopId,
         lineId: String(line.cl),

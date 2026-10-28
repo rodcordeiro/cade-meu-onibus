@@ -1,8 +1,9 @@
+import { isFreshObservation, MAX_OBSERVATION_AGE_MINUTES, MAX_OBSERVATION_AGE_MS } from './observation-freshness';
 import type { ReferencePoint, VehiclePosition, VehicleSighting } from './types';
 
 /** Hipóteses de campo: revisar após medições reais, sem derivar ETA de posição. */
-export const MAX_POSITION_AGE_MINUTES = 5;
-export const MAX_POSITION_AGE_MS = MAX_POSITION_AGE_MINUTES * 60_000;
+export const MAX_POSITION_AGE_MINUTES = MAX_OBSERVATION_AGE_MINUTES;
+export const MAX_POSITION_AGE_MS = MAX_OBSERVATION_AGE_MS;
 export const MAX_REFERENCE_DISTANCE_METERS = 300;
 const EARTH_RADIUS_METERS = 6_371_000;
 
@@ -36,8 +37,7 @@ export function selectVehicleSighting(
 
   for (const vehicle of positions) {
     if (vehicle.lineId !== lineId || !vehicle.vehicleId) continue;
-    const age = now.getTime() - vehicle.observedAt.getTime();
-    if (!Number.isFinite(age) || age < 0 || age > MAX_POSITION_AGE_MS) continue;
+    if (!isFreshObservation(vehicle.observedAt, now)) continue;
     if (!Number.isFinite(vehicle.lat) || !Number.isFinite(vehicle.lon) ||
       Math.abs(vehicle.lat) > 90 || Math.abs(vehicle.lon) > 180) continue;
 

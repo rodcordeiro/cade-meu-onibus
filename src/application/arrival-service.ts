@@ -4,6 +4,8 @@ import type { ArrivalResult, ArrivalStatus, FavoriteLine, FavoritesConfig, Trans
 /** Parâmetros de uma consulta geral; janela e limite vêm da política de domínio. */
 export interface ArrivalQuery {
   now: Date;
+  lineId?: string;
+  stopId?: string;
 }
 
 export interface ArrivalQueryOptions {
@@ -31,8 +33,11 @@ export class ArrivalService {
    * Consulta os pontos favoritos, isolando a falha de cada ponto,
    * e devolve as previsões elegíveis agregadas com o status de cobertura.
    */
-  async query({ now }: ArrivalQuery): Promise<ArrivalResult> {
-    const stops = this.favorites.stops;
+  async query({ now, lineId, stopId }: ArrivalQuery): Promise<ArrivalResult> {
+    const stops = this.favorites.stops.filter(stop =>
+      (stopId === undefined || stop.id === stopId) &&
+      (lineId === undefined || stop.lineIds.includes(lineId))
+    );
     const maxConcurrency = Math.max(1, Math.floor(this.options.maxConcurrency ?? DEFAULT_CONCURRENCY));
     const deadlineMs = Math.max(1, this.options.deadlineMs ?? DEFAULT_DEADLINE_MS);
     const deadline = Date.now() + deadlineMs;
@@ -64,7 +69,7 @@ export class ArrivalService {
         failedStopIds.push(stop.id);
         return [];
       }
-      return outcome.value.filter((p) => matchesFavoritePair(p, stop, this.lines));
+      return outcome.value.filter((p) => matchesFavoritePair(p, stop, this.lines) && (lineId === undefined || p.lineId === lineId));
     });
     const eligible = favoritePredictions.filter((p) => isWithinWindow(p, now));
 

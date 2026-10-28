@@ -84,6 +84,8 @@ export class ArrivalService {
 }
 
 function coverageStatus(failed: number, total: number): ArrivalStatus {
+  // Nenhum ponto consultado não é cobertura completa (#36).
+  if (total === 0) return 'no-associations';
   if (failed === 0) return 'complete';
   return failed === total ? 'unavailable' : 'partial';
 }

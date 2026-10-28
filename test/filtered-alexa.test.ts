@@ -48,6 +48,25 @@ describe('consultas filtradas Alexa (#6)', () => {
     expect(result.speech).not.toContain('Linha verde');
     expect(provider.calls).toEqual(['1']);
   });
+  // #36: zero associações ponto–linha não é cobertura completa nem prova de que não há ônibus.
+  it('linha e ponto sem associação favorita não consultam o provedor nem afirmam ausência de ônibus', async () => {
+    const provider = new FakeTransportProvider();
+    const result = await invoke({ favorites, provider }, request('NextBusByLineAndStopIntent', 'verde', 'ponto sul'));
+    expect(provider.calls).toEqual([]);
+    expect(result.speech).toBe('A Linha verde não está entre as linhas favoritas do ponto sul, então não consultei previsões.');
+    expect(result.speech).not.toMatch(/Nenhum ônibus|Não encontrei previsões/);
+    expect(result.shouldEndSession).toBe(false);
+  });
+  it('linha nova incompatível com o ponto guardado na sessão explica a falta de associação', async () => {
+    const provider = new FakeTransportProvider();
+    const envelope = request('NextBusByLineIntent', 'verde');
+    if (!envelope.session) throw new Error('Sessão de teste ausente');
+    envelope.session.new = false;
+    envelope.session.attributes = { stopId: '2' };
+    const result = await invoke({ favorites, provider }, envelope);
+    expect(provider.calls).toEqual([]);
+    expect(result.speech).toBe('A Linha verde não está entre as linhas favoritas do ponto sul, então não consultei previsões.');
+  });
   it('orienta nome desconhecido sem consultar o provedor', async () => {
     const provider = new FakeTransportProvider();
     const result = await invoke({ favorites, provider }, request('NextBusByLineIntent', 'desconhecida'));

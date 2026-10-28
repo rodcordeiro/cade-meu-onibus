@@ -1,8 +1,8 @@
 import type { RequestEnvelope, ResponseEnvelope } from 'ask-sdk-model';
-import { createSkill } from './alexa/skill';
-import { loadFavorites } from './infrastructure/config/favorites-loader';
-import { SptransTransportProvider } from './infrastructure/transport/sptrans-provider';
-import { UnconfiguredTransportProvider } from './infrastructure/transport/unconfigured-provider';
+import { createSkill } from './skill';
+import { loadFavorites } from '../infrastructure/config/favorites-loader';
+import { SptransTransportProvider } from '../infrastructure/transport/sptrans-provider';
+import { UnconfiguredTransportProvider } from '../infrastructure/transport/unconfigured-provider';
 
 /** Dependências de composição do handler Lambda. */
 export interface LambdaHandlerOptions {

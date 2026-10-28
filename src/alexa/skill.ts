@@ -10,7 +10,7 @@ import {
 import type { Response } from 'ask-sdk-model';
 import { ArrivalService } from '../application/arrival-service';
 import { MAX_ANNOUNCED_ARRIVALS, QUERY_WINDOW_MINUTES } from '../domain/arrival-policy';
-import type { FavoritesConfig, TransportProvider } from '../domain/types';
+import type { FavoritesConfig, QueryFilter, TransportProvider } from '../domain/types';
 import { SpeechPresenter } from './speech-presenter';
 import { resolveFilter } from './filter-resolution';
 
@@ -82,12 +82,9 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
         : typeof previous.lineId === 'string' ? previous.lineId : undefined;
       const stopId = stopResolution?.kind === 'resolved' ? stopResolution.id
         : typeof previous.stopId === 'string' ? previous.stopId : undefined;
+      const filter: QueryFilter = { ...(lineId && { lineId }), ...(stopId && { stopId }) };
       // Alexa session attributes belong to this session only, never to a process-global cache.
-      input.attributesManager.setSessionAttributes({
-        ...(lineId && { lineId }),
-        ...(stopId && { stopId }),
-      });
-      const filter = { ...(lineId && { lineId }), ...(stopId && { stopId }) };
+      input.attributesManager.setSessionAttributes({ ...filter });
       const result = await service.query({ now: now(), ...filter });
       return input.responseBuilder.speak(escapeSsml(presenter.present(result, now(), filter)))
         .reprompt(FOLLOWUP_REPROMPT)

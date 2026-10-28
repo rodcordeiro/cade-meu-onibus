@@ -40,7 +40,7 @@ npm run invoke:local -- AMAZON.HelpIntent  # outra intent
 | `src/application` | `ArrivalService`: consulta todos os pontos, isola falhas e calcula o status de cobertura. |
 | `src/infrastructure/config` | Carregamento e validação integral dos favoritos e guarda de build (`validate-favorites`). |
 | `src/alexa` | Handlers, fala pt-BR (`SpeechPresenter`) e montagem da skill. |
-| `src/index.ts`, `src/lambda-handler.ts` | Handler AWS Lambda e sua composição. |
+| `src/index.ts`, `src/alexa/lambda-handler.ts` | Handler AWS Lambda e sua composição. |
 | `skill-package/interactionModels/custom/pt-BR.json` | Modelo de interação (intent geral + intents nativas). |
 
 ## Configuração de favoritos

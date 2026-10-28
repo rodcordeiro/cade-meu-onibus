@@ -1,15 +1,13 @@
 import { isWithinWindow, matchesFavoritePair, selectArrivals } from '../domain/arrival-policy';
-import { selectVehicleSighting } from '../domain/position-policy';
+import { approachReferences, selectVehicleSighting } from '../domain/position-policy';
 import type {
-  ArrivalPrediction, ArrivalResult, ArrivalStatus, FavoriteLine, FavoritesConfig, MonitoredStop,
+  ArrivalPrediction, ArrivalResult, ArrivalStatus, FavoriteLine, FavoritesConfig, MonitoredStop, QueryFilter,
   StopLineAssociation, TransportProvider, VehiclePosition, VehicleSighting,
 } from '../domain/types';
 
 /** Parâmetros de uma consulta geral; janela e limite vêm da política de domínio. */
-export interface ArrivalQuery {
+export interface ArrivalQuery extends QueryFilter {
   now: Date;
-  lineId?: string;
-  stopId?: string;
 }
 
 export interface ArrivalQueryOptions {
@@ -21,6 +19,25 @@ const DEFAULT_CONCURRENCY = 3;
 const DEFAULT_DEADLINE_MS = 7000;
 
 type Outcome<T> = { ok: true; value: T } | { ok: false };
+
+/** Consulta cujo resultado tipado é registrado pelo próprio chamador; o executor só decide sucesso, falha ou deadline. */
+interface BoundedTask {
+  execute(remainingMs: number): Promise<void>;
+  expire(): void;
+}
+
+function boundedTask<T>(query: () => Promise<T>, record: (outcome: Outcome<T>) => void): BoundedTask {
+  return {
+    async execute(remainingMs) {
+      try {
+        record({ ok: true, value: await withTimeout(query(), remainingMs) });
+      } catch {
+        record({ ok: false });
+      }
+    },
+    expire: () => record({ ok: false }),
+  };
+}
 
 /** Orquestra a consulta de chegadas sobre os pontos e linhas favoritos. */
 export class ArrivalService {
@@ -49,18 +66,17 @@ export class ArrivalService {
     // Posição vem por linha: uma única consulta mesmo quando a linha aparece em vários pontos.
     const positionLineIds = [...new Set(positionAssociations.map(a => a.lineId))];
 
-    const tasks: Array<() => Promise<unknown>> = [
-      ...forecastStops.map(stop => () => this.provider.getArrivals(stop.id, { now })),
-      ...positionLineIds.map(line => () => this.provider.getVehiclePositions(line, { now })),
+    const stopOutcomes = new Map<MonitoredStop, Outcome<ArrivalPrediction[]>>();
+    const lineOutcomes = new Map<string, Outcome<VehiclePosition[]>>();
+    const tasks: BoundedTask[] = [
+      ...forecastStops.map(stop => boundedTask(() => this.provider.getArrivals(stop.id, { now }), o => stopOutcomes.set(stop, o))),
+      ...positionLineIds.map(line => boundedTask(() => this.provider.getVehiclePositions(line, { now }), o => lineOutcomes.set(line, o))),
     ];
-    const outcomes = await runBounded(tasks, this.options);
-    const stopOutcomes = outcomes.slice(0, forecastStops.length) as Outcome<ArrivalPrediction[]>[];
-    const lineOutcomes = new Map(positionLineIds.map((line, index) =>
-      [line, outcomes[forecastStops.length + index] as Outcome<VehiclePosition[]>]));
+    await runBounded(tasks, this.options);
 
     const failedStopIds: string[] = [];
-    const favoritePredictions = stopOutcomes.flatMap((outcome, index) => {
-      const stop = forecastStops[index]!;
+    const favoritePredictions = forecastStops.flatMap((stop) => {
+      const outcome = stopOutcomes.get(stop)!;
       if (!outcome.ok) {
         failedStopIds.push(stop.id);
         return [];
@@ -70,14 +86,14 @@ export class ArrivalService {
     });
     const eligible = favoritePredictions.filter((p) => isWithinWindow(p, now));
 
-    const failedLineIds = positionLineIds.filter(line => !lineOutcomes.get(line)!.ok);
-    const answeredAssociations = positionAssociations.filter(a => !failedLineIds.includes(a.lineId));
+    const linePositions = new Map<string, VehiclePosition[]>();
+    for (const [line, outcome] of lineOutcomes) if (outcome.ok) linePositions.set(line, outcome.value);
+    const failedLineIds = positionLineIds.filter(line => !linePositions.has(line));
+    const answeredAssociations = positionAssociations.filter(a => linePositions.has(a.lineId));
     const sightings = answeredAssociations.flatMap((association): VehicleSighting[] => {
-      const outcome = lineOutcomes.get(association.lineId)!;
-      if (!outcome.ok) return [];
-      const references = this.favorites.stops.find(s => s.id === association.stopId)
-        ?.approaches?.find(a => a.lineId === association.lineId)?.references ?? [];
-      const sighting = selectVehicleSighting(association.stopId, association.lineId, references, outcome.value, now);
+      const references = approachReferences(this.favorites.stops, association);
+      const sighting = selectVehicleSighting(
+        association.stopId, association.lineId, references, linePositions.get(association.lineId)!, now);
       return sighting ? [sighting] : [];
     });
 
@@ -99,28 +115,19 @@ export class ArrivalService {
 }
 
 /** Executa as consultas com concorrência limitada e deadline total compartilhados. */
-async function runBounded(tasks: Array<() => Promise<unknown>>, options: ArrivalQueryOptions): Promise<Outcome<unknown>[]> {
+async function runBounded(tasks: readonly BoundedTask[], options: ArrivalQueryOptions): Promise<void> {
   const maxConcurrency = Math.max(1, Math.floor(options.maxConcurrency ?? DEFAULT_CONCURRENCY));
   const deadline = Date.now() + Math.max(1, options.deadlineMs ?? DEFAULT_DEADLINE_MS);
-  const outcomes: Outcome<unknown>[] = new Array(tasks.length);
   let cursor = 0;
   const worker = async (): Promise<void> => {
     while (cursor < tasks.length) {
-      const index = cursor++;
+      const task = tasks[cursor++]!;
       const remaining = deadline - Date.now();
-      if (remaining <= 0) {
-        outcomes[index] = { ok: false };
-        continue;
-      }
-      try {
-        outcomes[index] = { ok: true, value: await withTimeout(tasks[index]!(), remaining) };
-      } catch {
-        outcomes[index] = { ok: false };
-      }
+      if (remaining <= 0) task.expire();
+      else await task.execute(remaining);
     }
   };
   await Promise.all(Array.from({ length: Math.min(maxConcurrency, tasks.length) }, () => worker()));
-  return outcomes;
 }
 
 function coverageStatus(failed: number, total: number): ArrivalStatus {

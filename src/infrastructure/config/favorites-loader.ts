@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import type { FavoriteLine, FavoritesConfig, MonitoredStop, StopApproach, ReferencePoint } from '../../domain/types';
+import { isOfficialSptransCode } from '../transport/sptrans-code';
 
 /** Erro de configuração dos favoritos, com a lista completa de problemas encontrados. */
 export class FavoritesConfigError extends Error {
@@ -181,7 +182,7 @@ function requireText(value: unknown, path: string, issues: string[]): string | u
 function requireOfficialCode(value: unknown, path: string, issues: string[]): string | undefined {
   const code = requireText(value, path, issues);
   // O código segue adiante mesmo inválido, para que as verificações de associação também sejam reportadas.
-  if (code !== undefined && !/^\d+$/.test(code)) issues.push(`${path} "${code}" deve ser o código numérico oficial SPTrans`);
+  if (code !== undefined && !isOfficialSptransCode(code)) issues.push(`${path} "${code}" deve ser o código numérico oficial SPTrans`);
   return code;
 }
 

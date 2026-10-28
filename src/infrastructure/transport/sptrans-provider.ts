@@ -1,4 +1,5 @@
 import { isFreshObservation } from '../../domain/observation-freshness';
+import { isOfficialSptransCode } from './sptrans-code';
 import type { ArrivalPrediction, RequestContext, TransportProvider, VehiclePosition } from '../../domain/types';
 
 const BASE = 'https://api.olhovivo.sptrans.com.br/v2.1';
@@ -18,14 +19,14 @@ export class SptransTransportProvider implements TransportProvider {
   }
 
   async getArrivals(stopId: string, { now }: RequestContext): Promise<ArrivalPrediction[]> {
-    if (!/^\d+$/.test(stopId)) throw new Error('Código de parada inválido');
+    if (!isOfficialSptransCode(stopId)) throw new Error('Código de parada inválido');
     const payload = await this.request('/Previsao/Parada?codigoParada=' + stopId);
     return parseArrivals(payload, stopId, now);
   }
 
   /** Consulta `Posicao/Linha` com a mesma sessão, renovação após 401 e timeout da previsão. */
   async getVehiclePositions(lineId: string, _context: RequestContext): Promise<VehiclePosition[]> {
-    if (!/^\d+$/.test(lineId)) throw new Error('Código de linha inválido');
+    if (!isOfficialSptransCode(lineId)) throw new Error('Código de linha inválido');
     const payload = await this.request('/Posicao/Linha?codigoLinha=' + lineId);
     return parseVehiclePositions(payload, lineId);
   }

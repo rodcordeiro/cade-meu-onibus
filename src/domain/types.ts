@@ -92,6 +92,12 @@ export interface StopLineAssociation {
   lineId: string;
 }
 
+/** Filtro opcional de linha e ponto favoritos de uma consulta (também guardado na sessão Alexa). */
+export interface QueryFilter {
+  lineId?: string;
+  stopId?: string;
+}
+
 /** Contexto de uma requisição ao provedor, independente de Alexa/AWS. */
 export interface RequestContext {
   now: Date;

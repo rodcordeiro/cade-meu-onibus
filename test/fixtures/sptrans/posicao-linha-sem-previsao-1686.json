@@ -1,0 +1,28 @@
+{
+  "request": {
+    "method": "GET",
+    "path": "/Posicao/Linha?codigoLinha=1686"
+  },
+  "status": 200,
+  "elapsedMs": 42,
+  "capturedAt": "2026-10-28T12:37:17.782Z",
+  "body": {
+    "hr": "09:37",
+    "vs": [
+      {
+        "p": "51019",
+        "a": true,
+        "ta": "2026-10-28T12:36:57Z",
+        "sv": null,
+        "is": null
+      },
+      {
+        "p": "51107",
+        "a": true,
+        "ta": "2026-10-28T12:36:52Z",
+        "sv": null,
+        "is": null
+      }
+    ]
+  }
+}

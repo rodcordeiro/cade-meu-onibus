@@ -3,6 +3,7 @@ import { strict as assert } from 'node:assert';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { sanitize, sanitizeDirectory } from '../scripts/sptrans-position-sanitize.mjs';
 import { capture, validateOutput } from '../scripts/sptrans-position-probe.mjs';
 
@@ -22,7 +23,7 @@ test('sanitização não sobrescreve fixture existente', () => {
 });
 
 test('recusa saída dentro do repositório e código inválido', async () => {
-  assert.throws(() => validateOutput(new URL('../test/fixtures', import.meta.url).pathname), /fora do repositório/);
+  assert.throws(() => validateOutput(fileURLToPath(new URL('../test/fixtures', import.meta.url))), /fora do repositório/);
   await assert.rejects(capture({ directory: '/tmp/position', lineId: 'abc', token: 'fake', fetcher: () => { throw Error('não chamar rede'); } }), /numérico/);
 });
 

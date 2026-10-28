@@ -16,7 +16,29 @@ Substitua os placeholders por **códigos internos oficiais `cl` do sentido Vila 
 
 O sanitizador remove `px`, `py`, latitude/longitude e credenciais de qualquer nível. Isso preserva formato, identificação e timestamps, mas **não serve para validar cálculos geográficos**; crie fixtures sintéticas separadas para a política de distância. Revise manualmente os arquivos sanitizados antes de versionar, verificando campos inesperados e dados pessoais. Nunca copie o diretório bruto.
 
-Registre na issue #16 os códigos públicos, HTTP status, horário, estrutura real, presença/ausência de veículos, se previsão veio vazia, limitações e evidências sanitizadas. **Nenhuma resposta real foi capturada por este PR.** Não conclua #16 nem desbloqueie #18 antes da captura real.
+Registre na issue #16 os códigos públicos, HTTP status, horário, estrutura real, presença/ausência de veículos, se previsão veio vazia, limitações e evidências sanitizadas.
+
+## Evidência real (28/10/2026, 09:37 em São Paulo, dia útil de manhã)
+
+Capturada com a sonda acima, usando o token do proprietário. O bruto ficou fora do repositório; as fixtures sanitizadas estão em `test/fixtures/sptrans/*-sem-previsao-{34974,1686}.json`.
+
+| Linha (`cl`) | Endpoint | HTTP | Resultado |
+| --- | --- | --- | --- |
+| 34974 (575C-10, sentido Vila Prudente) | `Posicao/Linha` | 200 | `hr` + `vs` com 4 veículos; a observação mais recente tinha cerca de 12 s |
+| 34974 | `Previsao/Linha` | 200 | `{"hr":"09:37","ps":[]}`: **nenhuma previsão** |
+| 34974 | `Previsao/Parada` (8704768) | 200 | `p: null` |
+| 1686 (407Y-10, sentido Vila Prudente) | `Posicao/Linha` | 200 | `hr` + `vs` com 2 veículos; a observação mais recente tinha cerca de 21 s |
+| 1686 | `Previsao/Linha` | 200 | `{"hr":"09:37","ps":[]}`: **nenhuma previsão** |
+| 1686 | `Previsao/Parada` (8704768) | 200 | `p: null` |
+
+Formato de `Posicao/Linha`: `{ hr: "HH:mm", vs: [{ p: string, a: boolean, ta: ISO-8601 UTC, py: number, px: number, sv: null, is: null }] }`. É o mesmo formato de `vs[]` da previsão, sem `t`. Na fixture, `px`/`py` foram removidos pelo sanitizador.
+
+Limitações:
+- uma única amostra, no pico da manhã;
+- a correspondência entre `cl` e letreiro/sentido foi informada pelo proprietário;
+- `Previsao/Parada` com `p: null` também pode significar parada inexistente (spike 0001).
+
+Ainda assim, a combinação de veículos com posição recente e `ps: []` na linha inteira confirma a ausência de previsão.
 
 ## Relatório de estrutura sem valores
 

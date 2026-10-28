@@ -32,6 +32,25 @@ describe('SPTrans previsão', () => {
   it('resolve virada de dia', () => {
     expect(parseArrivals({ hr: '23:55', p: { cp: 1, l: [{ cl: 2, vs: [{ t: '00:10', ta: now.toISOString() }] }] } }, '1', now)[0]?.arrivalAt).toEqual(new Date('2026-10-23T03:10:00Z'));
   });
+  it('usa o deslocamento vigente em São Paulo na data (horário de verão histórico, UTC-02)', () => {
+    const dstNow = new Date('2018-12-01T17:50:00Z'); // 15:50 em São Paulo (UTC-02)
+    const raw = { hr: '15:50', p: { cp: 1, l: [{ cl: 2, vs: [{ t: '16:11', ta: dstNow.toISOString() }] }] } };
+    expect(parseArrivals(raw, '1', dstNow)[0]?.arrivalAt).toEqual(new Date('2018-12-01T18:11:00Z'));
+  });
+  it('ancora a data no dia de hr quando o relógio local já virou a meia-noite', () => {
+    const afterMidnight = new Date('2026-10-23T03:01:00Z'); // 00:01 em São Paulo
+    const raw = { hr: '23:59', p: { cp: 1, l: [{ cl: 2, vs: [{ t: '00:05', ta: afterMidnight.toISOString() }] }] } };
+    expect(parseArrivals(raw, '1', afterMidnight)[0]?.arrivalAt).toEqual(new Date('2026-10-23T03:05:00Z'));
+  });
+  it('não joga a previsão 24 h para trás quando o relógio do servidor está à frente de hr', () => {
+    const serverAhead = new Date('2026-10-23T03:00:30Z'); // 00:00 em São Paulo; SPTrans ainda em 23:59
+    const raw = { hr: '23:59', p: { cp: 1, l: [{ cl: 2, vs: [{ t: '23:59', ta: serverAhead.toISOString() }] }] } };
+    expect(parseArrivals(raw, '1', serverAhead)[0]?.arrivalAt).toEqual(new Date('2026-10-23T02:59:00Z'));
+  });
+  it('ignora veículo com horário t inválido sem inventar previsão', () => {
+    const raw = { hr: '15:50', p: { cp: 1, l: [{ cl: 2, vs: [{ t: '24:10', ta: now.toISOString() }, { t: '16:00', ta: now.toISOString() }] }] } };
+    expect(parseArrivals(raw, '1', now).map(p => p.arrivalAt)).toEqual([new Date('2026-10-22T19:00:00Z')]);
+  });
   it('faz login lazy e reutiliza cookie', async () => {
     const fetcher = vi.fn(async (url: string) => url.includes('/Login/')
       ? { ok: true, text: async () => 'true', headers: { getSetCookie: () => ['session=abc; Path=/'] } }

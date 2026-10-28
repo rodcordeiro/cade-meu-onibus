@@ -1,9 +1,9 @@
 import { isFreshObservation } from '../../domain/observation-freshness';
+import { saoPauloLocalParts, saoPauloLocalToUtc } from '../time/sao-paulo-clock';
 import { isOfficialSptransCode } from './sptrans-code';
 import type { ArrivalPrediction, RequestContext, TransportProvider, VehiclePosition } from '../../domain/types';
 
 const BASE = 'https://api.olhovivo.sptrans.com.br/v2.1';
-const ZONE = 'America/Sao_Paulo';
 type Fetcher = typeof fetch;
 
 export class SptransTransportProvider implements TransportProvider {
@@ -153,39 +153,6 @@ export function parseArrivals(raw: unknown, requestedStopId: string, now: Date):
   return predictions;
 }
 
-const zoneFormatter = new Intl.DateTimeFormat('en-US', {
-  timeZone: ZONE, hourCycle: 'h23',
-  year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
-});
-
-interface LocalDateTime { year: number; month: number; day: number; hour: number; minute: number }
-
-function localParts(date: Date): LocalDateTime {
-  const parts = zoneFormatter.formatToParts(date);
-  const get = (name: string) => Number(parts.find(p => p.type === name)?.value);
-  return { year: get('year'), month: get('month'), day: get('day'), hour: get('hour'), minute: get('minute') };
-}
-
-/** Diferença (ms) entre o relógio de São Paulo e o UTC no instante dado. */
-function zoneOffsetMs(instantMs: number): number {
-  const l = localParts(new Date(instantMs));
-  const asUtc = Date.UTC(l.year, l.month - 1, l.day, l.hour, l.minute);
-  return asUtc - Math.floor(instantMs / 60_000) * 60_000;
-}
-
-/**
- * Converte uma data/hora de parede em America/Sao_Paulo para o instante UTC,
- * usando as regras de fuso do runtime (Intl), sem deslocamento fixo.
- * `day` pode extrapolar o mês; `Date.UTC` normaliza.
- */
-export function saoPauloLocalToUtc(year: number, month: number, day: number, hour: number, minute: number): Date {
-  const wall = Date.UTC(year, month - 1, day, hour, minute);
-  let instant = wall - zoneOffsetMs(wall);
-  const corrected = wall - zoneOffsetMs(instant);
-  if (corrected !== instant) instant = corrected;
-  return new Date(instant);
-}
-
 function parseHHmm(value: string): { hour: number; minute: number } | undefined {
   const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(value);
   if (!match) return undefined;
@@ -198,7 +165,7 @@ function resolveArrivalDate(reference: string, target: string, now: Date): Date 
   if (!ref || !tgt) return undefined;
   // 1) Dia de `hr`: entre ontem/hoje/amanhã (relógio local de `now`), o `hr` mais próximo de `now`.
   //    Tolera relógio do servidor adiantado/atrasado em torno da meia-noite.
-  const { year, month, day } = localParts(now);
+  const { year, month, day } = saoPauloLocalParts(now);
   let refDay = day;
   let bestDistance = Infinity;
   for (const candidate of [day - 1, day, day + 1]) {

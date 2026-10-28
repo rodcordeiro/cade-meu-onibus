@@ -78,6 +78,18 @@ export interface ArrivalResult {
   status: ArrivalStatus;
   /** Quantidade de previsões do par ponto–linha favorito descartadas por estarem fora da janela. */
   outsideWindowCount: number;
+  /** No máximo um avistamento por associação ponto–linha `position`; sem `arrivalAt` nem ordenação por chegada. */
+  sightings: VehicleSighting[];
+  /** Associações `position` cujas posições foram obtidas, com ou sem avistamento elegível. */
+  positionAssociations: StopLineAssociation[];
+  /** Linhas `position` cuja consulta de posições falhou. */
+  failedLineIds: string[];
+}
+
+/** Associação entre um ponto monitorado e uma linha favorita. */
+export interface StopLineAssociation {
+  stopId: string;
+  lineId: string;
 }
 
 /** Contexto de uma requisição ao provedor, independente de Alexa/AWS. */

@@ -11,6 +11,21 @@ describe('SPTrans previsão', () => {
       arrivalAt: new Date('2026-10-22T19:11:00Z'), observedAt: new Date('2026-10-22T18:50:37Z'),
     }]);
   });
+  it('descarta previsão com observação antiga sem inventar disponibilidade', () => {
+    const stale = structuredClone(sample);
+    stale.p.l[0]!.vs[0]!.ta = new Date(now.getTime() - 5 * 60_000 - 1).toISOString();
+    expect(parseArrivals(stale, '260016861', now)).toEqual([]);
+  });
+  it('aceita observação exatamente no limite de cinco minutos', () => {
+    const boundary = structuredClone(sample);
+    boundary.p.l[0]!.vs[0]!.ta = new Date(now.getTime() - 5 * 60_000).toISOString();
+    expect(parseArrivals(boundary, '260016861', now)).toHaveLength(1);
+  });
+  it('descarta observação com relógio mais de um minuto no futuro', () => {
+    const future = structuredClone(sample);
+    future.p.l[0]!.vs[0]!.ta = new Date(now.getTime() + 60_001).toISOString();
+    expect(parseArrivals(future, '260016861', now)).toEqual([]);
+  });
   it('interpreta p:null como nenhuma previsão', () => {
     expect(parseArrivals({ hr: '15:50', p: null }, '260016861', now)).toEqual([]);
   });

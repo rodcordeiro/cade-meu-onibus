@@ -4,6 +4,18 @@ export interface FavoriteLine {
   label: string;
   aliases?: string[];
   direction?: string;
+  arrivalSource?: 'forecast' | 'position';
+}
+
+export interface ReferencePoint {
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+export interface StopApproach {
+  lineId: string;
+  references: ReferencePoint[];
 }
 
 /** Ponto monitorado, com código oficial e as linhas favoritas consultadas nele. */
@@ -12,6 +24,7 @@ export interface MonitoredStop {
   alias: string;
   lineIds: string[];
   aliases?: string[];
+  approaches?: StopApproach[];
 }
 
 /** Documento de favoritos validado. */

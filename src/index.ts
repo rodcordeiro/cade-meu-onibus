@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { createLambdaHandler } from './lambda-handler';
+import { createLambdaHandler } from './alexa/lambda-handler';
 
 // Configuração operacional: carregada e validada na inicialização da Lambda; inválida ou marcada como
 // exemplo, falha antes de atender requisições. O build (`npm run build`) aplica a mesma validação.

@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { FavoritesConfigError } from '../src/infrastructure/config/favorites-loader';
-import { createLambdaHandler } from '../src/lambda-handler';
+import { createLambdaHandler } from '../src/alexa/lambda-handler';
 import { alexaRequest } from './support/alexa';
 
 const examplePath = join(__dirname, '..', 'config', 'favorites.example.json');

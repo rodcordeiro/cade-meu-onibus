@@ -6,6 +6,15 @@ export interface ArrivalQuery {
   now: Date;
 }
 
+export interface ArrivalQueryOptions {
+  maxConcurrency?: number;
+  deadlineMs?: number;
+}
+
+const DEFAULT_CONCURRENCY = 3;
+const DEFAULT_DEADLINE_MS = 7000;
+
+
 /** Orquestra a consulta de chegadas sobre os pontos e linhas favoritos. */
 export class ArrivalService {
   private readonly lines: ReadonlyMap<string, FavoriteLine>;
@@ -13,6 +22,7 @@ export class ArrivalService {
   constructor(
     private readonly favorites: FavoritesConfig,
     private readonly provider: TransportProvider,
+    private readonly options: ArrivalQueryOptions = {},
   ) {
     this.lines = new Map(favorites.lines.map((line) => [line.id, line]));
   }
@@ -23,7 +33,29 @@ export class ArrivalService {
    */
   async query({ now }: ArrivalQuery): Promise<ArrivalResult> {
     const stops = this.favorites.stops;
-    const settled = await Promise.allSettled(stops.map((stop) => this.provider.getArrivals(stop.id, { now })));
+    const maxConcurrency = Math.max(1, Math.floor(this.options.maxConcurrency ?? DEFAULT_CONCURRENCY));
+    const deadlineMs = Math.max(1, this.options.deadlineMs ?? DEFAULT_DEADLINE_MS);
+    const deadline = Date.now() + deadlineMs;
+    let cursor = 0;
+    const settled: PromiseSettledResult<Awaited<ReturnType<TransportProvider['getArrivals']>>>[] = new Array(stops.length);
+    const worker = async (): Promise<void> => {
+      while (cursor < stops.length) {
+        const index = cursor++;
+        const stop = stops[index]!;
+        const remaining = deadline - Date.now();
+        if (remaining <= 0) {
+          settled[index] = { status: 'rejected', reason: new Error('Deadline excedido') };
+          continue;
+        }
+        try {
+          const value = await withTimeout(this.provider.getArrivals(stop.id, { now }), remaining);
+          settled[index] = { status: 'fulfilled', value };
+        } catch (reason) {
+          settled[index] = { status: 'rejected', reason };
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(maxConcurrency, stops.length) }, () => worker()));
 
     const failedStopIds: string[] = [];
     const favoritePredictions = settled.flatMap((outcome, index) => {
@@ -49,4 +81,12 @@ export class ArrivalService {
 function coverageStatus(failed: number, total: number): ArrivalStatus {
   if (failed === 0) return 'complete';
   return failed === total ? 'unavailable' : 'partial';
+}
+
+/** Impede que uma consulta pendurada bloqueie a resposta; o provedor deve cancelar a rede por timeout próprio. */
+function withTimeout<T>(task: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Deadline excedido')), timeoutMs);
+    task.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+  });
 }

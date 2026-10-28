@@ -1,5 +1,5 @@
 import { QUERY_WINDOW_MINUTES } from '../domain/arrival-policy';
-import type { ArrivalPrediction, ArrivalResult, FavoritesConfig } from '../domain/types';
+import type { ArrivalPrediction, ArrivalResult, FavoritesConfig, StopLineAssociation, VehicleSighting } from '../domain/types';
 
 /** Traduz um resultado de chegadas em fala pt-BR, sem consultar serviços externos. */
 export class SpeechPresenter {
@@ -12,11 +12,30 @@ export class SpeechPresenter {
   present(result: ArrivalResult, now: Date, filter: { lineId?: string; stopId?: string } = {}): string {
     if (result.status === 'unavailable') return 'Não consegui consultar as previsões agora. Tente novamente em instantes.';
     if (result.status === 'no-associations') return this.describeMissingAssociation(filter);
-    const main = this.describeArrivals(result, now);
+    // Previsões primeiro; avistamentos depois, sem entrar no limite de cinco chegadas (ADR-0009).
+    const parts = [
+      ...(result.queriedStopIds.length > 0 ? [this.describeArrivals(result, now)] : []),
+      ...result.positionAssociations.map((association) => this.describeSighting(association, result.sightings, now)),
+    ];
     if (result.status === 'partial') {
-      return `${main} Não consegui consultar ${this.joinStops(result.failedStopIds)}, então a lista pode estar incompleta.`;
+      parts.push(`Não consegui consultar ${this.joinFailures(result)}, então a lista pode estar incompleta.`);
     }
-    return main;
+    return parts.join(' ');
+  }
+
+  /**
+   * Avistamento nunca vira tempo de chegada (invariante 7): fala só referência,
+   * referências restantes e idade da observação.
+   */
+  private describeSighting(association: StopLineAssociation, sightings: VehicleSighting[], now: Date): string {
+    const subject = `${this.lineLabel(association.lineId)} no ${this.stopAlias(association.stopId)}`;
+    const sighting = sightings.find((s) => s.stopId === association.stopId && s.lineId === association.lineId);
+    if (!sighting) return `${subject}: sem previsão e sem ônibus visto perto.`;
+    const age = Math.floor((now.getTime() - sighting.observedAt.getTime()) / 60_000);
+    const remaining = sighting.referencesRemaining === 0 ? 'já junto ao ponto'
+      : sighting.referencesRemaining === 1 ? 'faltando 1 referência até o ponto'
+        : `faltando ${sighting.referencesRemaining} referências até o ponto`;
+    return `${subject}, sem previsão da SPTrans: ônibus visto há ${formatMinutes(age)} perto de ${sighting.referenceName}, ${remaining}.`;
   }
 
   private describeArrivals(result: ArrivalResult, now: Date): string {
@@ -49,8 +68,12 @@ export class SpeechPresenter {
     return `${line} no ${this.stopAlias(prediction.stopId)} em ${formatMinutes(minutes)}`;
   }
 
-  private joinStops(stopIds: string[]): string {
-    return joinSpoken(stopIds.map((id) => `o ${this.stopAlias(id)}`), ', ', ' e ');
+  private joinFailures(result: ArrivalResult): string {
+    const items = [
+      ...result.failedStopIds.map((id) => `o ${this.stopAlias(id)}`),
+      ...result.failedLineIds.map((id) => `a posição da ${this.lineLabel(id)}`),
+    ];
+    return joinSpoken(items, ', ', ' e ');
   }
 
   private stopAlias(stopId: string): string {

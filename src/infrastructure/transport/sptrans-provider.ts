@@ -8,7 +8,7 @@ type Fetcher = typeof fetch;
 
 export class SptransTransportProvider implements TransportProvider {
   private cookie?: string;
-  private loginPromise?: Promise<void>;
+  private loginPromise?: Promise<string>;
 
   constructor(
     private readonly token: string,
@@ -25,24 +25,37 @@ export class SptransTransportProvider implements TransportProvider {
   }
 
   private async request(path: string): Promise<unknown> {
-    await this.ensureLogin();
-    let response = await this.http(BASE + path, { headers: { cookie: this.cookie! } });
+    const usedCookie = await this.ensureLogin();
+    let response = await this.http(BASE + path, { headers: { cookie: usedCookie } });
     if (response.status === 401) {
-      this.cookie = undefined;
-      await this.ensureLogin();
-      response = await this.http(BASE + path, { headers: { cookie: this.cookie! } });
+      // Uma única nova tentativa; a renovação só ocorre se ninguém já trocou o cookie usado.
+      const renewedCookie = await this.renewSession(usedCookie);
+      response = await this.http(BASE + path, { headers: { cookie: renewedCookie } });
     }
     if (!response.ok) throw new Error('SPTrans consulta falhou: HTTP ' + response.status);
     return response.json();
   }
 
-  private async ensureLogin(): Promise<void> {
-    if (this.cookie) return;
-    if (!this.loginPromise) this.loginPromise = this.login().finally(() => { this.loginPromise = undefined; });
-    await this.loginPromise;
+  private async ensureLogin(): Promise<string> {
+    if (this.cookie) return this.cookie;
+    return this.sharedLogin();
   }
 
-  private async login(): Promise<void> {
+  /** Renova a sessão após 401, sem invalidar um cookie mais novo obtido por outra consulta. */
+  private async renewSession(staleCookie: string): Promise<string> {
+    if (this.cookie && this.cookie !== staleCookie) return this.cookie;
+    if (this.loginPromise) return this.loginPromise;
+    this.cookie = undefined;
+    return this.sharedLogin();
+  }
+
+  /** Uma única promessa de login compartilhada por todas as consultas concorrentes. */
+  private sharedLogin(): Promise<string> {
+    if (!this.loginPromise) this.loginPromise = this.login().finally(() => { this.loginPromise = undefined; });
+    return this.loginPromise;
+  }
+
+  private async login(): Promise<string> {
     const response = await this.http(BASE + '/Login/Autenticar?token=' + encodeURIComponent(this.token), {
       method: 'POST',
       headers: { 'Content-Length': '0' },
@@ -52,6 +65,7 @@ export class SptransTransportProvider implements TransportProvider {
     const session = cookies.map(c => c.split(';')[0]).filter(Boolean).join('; ');
     if (!session) throw new Error('SPTrans não forneceu cookie de sessão');
     this.cookie = session;
+    return session;
   }
 
   private async http(url: string, init: RequestInit): Promise<Response> {

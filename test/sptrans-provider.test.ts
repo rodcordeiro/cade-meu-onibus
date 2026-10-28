@@ -74,6 +74,76 @@ describe('SPTrans previsão', () => {
     expect(await provider.getArrivals('260016861', { now })).toHaveLength(1);
     expect(login).toBe(2);
   });
+  describe('renovação de sessão após 401', () => {
+    type FakeResponse = { ok: boolean; status: number; json?: () => Promise<unknown> };
+    const unauthorized: FakeResponse = { ok: false, status: 401 };
+    const success: FakeResponse = { ok: true, status: 200, json: async () => sample };
+
+    /** Sessão 1 expira: consultas com ela ficam pendentes até o teste responder; sessões novas respondem OK. */
+    function sessionServer(loginBodies: string[] = []) {
+      let logins = 0;
+      const pending: Array<(r: FakeResponse) => void> = [];
+      const queryCookies: string[] = [];
+      const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.includes('/Login/')) {
+          logins++;
+          const body = loginBodies[logins - 1] ?? 'true';
+          return { ok: true, text: async () => body, headers: { getSetCookie: () => ['session=' + logins + '; Path=/'] } };
+        }
+        const cookie = (init?.headers as Record<string, string>).cookie ?? '';
+        queryCookies.push(cookie);
+        if (cookie === 'session=1') return new Promise<FakeResponse>(resolve => pending.push(resolve));
+        return success;
+      });
+      const provider = new SptransTransportProvider('secret-token', fetcher as unknown as typeof fetch);
+      return { provider, pending, queryCookies, logins: () => logins };
+    }
+
+    it('401 tardio com cookie antigo não invalida a sessão já renovada', async () => {
+      const server = sessionServer();
+      const first = server.provider.getArrivals('260016861', { now });
+      const second = server.provider.getArrivals('260016861', { now });
+      await vi.waitFor(() => expect(server.pending).toHaveLength(2));
+      server.pending[0]!(unauthorized);
+      expect(await first).toHaveLength(1);
+      server.pending[1]!(unauthorized);
+      expect(await second).toHaveLength(1);
+      expect(server.logins()).toBe(2);
+      expect(server.queryCookies).toEqual(['session=1', 'session=1', 'session=2', 'session=2']);
+    });
+
+    it('N consultas com 401 simultâneo compartilham uma única renovação', async () => {
+      const server = sessionServer();
+      const calls = [1, 2, 3].map(() => server.provider.getArrivals('260016861', { now }));
+      await vi.waitFor(() => expect(server.pending).toHaveLength(3));
+      server.pending.forEach(respond => respond(unauthorized));
+      for (const result of await Promise.all(calls)) expect(result).toHaveLength(1);
+      expect(server.logins()).toBe(2);
+    });
+
+    it('falha de renovação propaga erro sem loop e sem expor token ou cookie', async () => {
+      const server = sessionServer(['true', 'false']);
+      const call = server.provider.getArrivals('260016861', { now });
+      await vi.waitFor(() => expect(server.pending).toHaveLength(1));
+      server.pending[0]!(unauthorized);
+      const error = await call.then(() => undefined, (e: Error) => e);
+      expect(error?.message).toContain('autenticação recusada');
+      expect(error?.message).not.toMatch(/secret-token|session=/);
+      expect(server.logins()).toBe(2);
+      expect(server.queryCookies).toHaveLength(1);
+    });
+
+    it('repete a consulta no máximo uma vez quando o 401 persiste', async () => {
+      let logins = 0;
+      const fetcher = vi.fn(async (url: string) => url.includes('/Login/')
+        ? { ok: true, text: async () => 'true', headers: { getSetCookie: () => ['session=' + ++logins] } }
+        : unauthorized);
+      const provider = new SptransTransportProvider('secret-token', fetcher as unknown as typeof fetch);
+      await expect(provider.getArrivals('260016861', { now })).rejects.toThrow('HTTP 401');
+      expect(logins).toBe(2);
+      expect(fetcher).toHaveBeenCalledTimes(4);
+    });
+  });
   it('não faz requisição com código inválido', async () => {
     const fetcher = vi.fn();
     const provider = new SptransTransportProvider('secret', fetcher as unknown as typeof fetch);

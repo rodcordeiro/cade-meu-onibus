@@ -1,5 +1,5 @@
 import { isFreshObservation, MAX_OBSERVATION_AGE_MINUTES, MAX_OBSERVATION_AGE_MS } from './observation-freshness';
-import type { ReferencePoint, VehiclePosition, VehicleSighting } from './types';
+import type { MonitoredStop, ReferencePoint, StopLineAssociation, VehiclePosition, VehicleSighting } from './types';
 
 /** Hipóteses de campo: revisar após medições reais, sem derivar ETA de posição. */
 export const MAX_POSITION_AGE_MINUTES = MAX_OBSERVATION_AGE_MINUTES;
@@ -23,6 +23,14 @@ export function haversineMeters(a: Pick<ReferencePoint, 'lat' | 'lon'>, b: Pick<
   const sinLon = Math.sin(dLon / 2);
   const h = sinLat * sinLat + Math.cos(lat1) * Math.cos(lat2) * sinLon * sinLon;
   return 2 * EARTH_RADIUS_METERS * Math.asin(Math.sqrt(Math.min(1, h)));
+}
+
+/**
+ * Referências de aproximação configuradas para a associação ponto–linha,
+ * em ordem de aproximação e terminando no ponto monitorado; vazia se não houver.
+ */
+export function approachReferences(stops: readonly MonitoredStop[], { stopId, lineId }: StopLineAssociation): readonly ReferencePoint[] {
+  return stops.find(stop => stop.id === stopId)?.approaches?.find(a => a.lineId === lineId)?.references ?? [];
 }
 
 /**

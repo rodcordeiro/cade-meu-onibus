@@ -87,8 +87,9 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
         ...(lineId && { lineId }),
         ...(stopId && { stopId }),
       });
-      const result = await service.query({ now: now(), ...(lineId && { lineId }), ...(stopId && { stopId }) });
-      return input.responseBuilder.speak(escapeSsml(presenter.present(result, now())))
+      const filter = { ...(lineId && { lineId }), ...(stopId && { stopId }) };
+      const result = await service.query({ now: now(), ...filter });
+      return input.responseBuilder.speak(escapeSsml(presenter.present(result, now(), filter)))
         .reprompt(FOLLOWUP_REPROMPT)
         .withShouldEndSession(false).getResponse();
     },

@@ -20,4 +20,27 @@ Registre na issue #16 os códigos públicos, HTTP status, horário, estrutura re
 
 ## Relatório de estrutura sem valores
 
-O comando `sptrans-position-shape.mjs` mostra apenas os nomes dos campos, tipos e quantidades de elementos de arrays de uma captura **já sanitizada**. Não imprime códigos, horários, veículos ou coordenadas. Esse relatório ajuda a confirmar o contrato real antes de implementar o adaptador (#18), mas não substitui a revisão humana dos arquivos nem demonstra que as linhas não têm previsão.
+O comando `sptrans-position-shape.mjs` mostra somente nomes de campos do contrato, tipos e contagens de uma captura **já sanitizada**. Ele ajuda a confirmar o contrato real antes do adaptador (#18), mas não substitui a revisão humana das fixtures nem demonstra que as linhas não têm previsão.
+
+```bash
+node scripts/sptrans-position-shape.mjs /tmp/sptrans-575c-safe/posicao-linha.json
+```
+
+**Garantias**
+
+- Nenhum valor da captura é impresso: apenas `type` (`string`, `number`, `boolean`, `null`, `object`, `array`) e contagens.
+- Só aparecem nomes da allowlist do contrato SPTrans (`Posicao/Linha`, `Previsao/Linha`, `Previsao/Parada` e `Message` de erro): `hr`, `p`, `l`, `ps`, `vs`, `cp`, `np`, `py`, `px`, `c`, `cl`, `sl`, `lt0`, `lt1`, `qv`, `a`, `ta`, `t`, `sv`, `is`, `Message`. Qualquer outro campo é contado em `unknownFields`, sem nome, valor ou subestrutura; o resultado é determinístico (não depende da ordem das chaves).
+- Arrays informam `count` (total), `inspected` e `elementShapes`: cada formato distinto dos elementos inspecionados, com `occurrences`. Formatos além do limite são contados em `omittedShapes`.
+- Erros de entrada usam mensagens fixas; o CLI responde apenas `Não foi possível inspecionar a captura` e código de saída 1, sem conteúdo do arquivo.
+
+**Limites** (`SHAPE_LIMITS`)
+
+| Limite | Valor | Efeito ao exceder |
+| --- | --- | --- |
+| Profundidade | 8 níveis | nó vira `{ "type": "depth-limit" }` |
+| Elementos inspecionados por array | 100 | restantes entram só em `count` |
+| Formatos por array | 5 | excedente em `omittedShapes` |
+| Nós inspecionados no total | 50.000 | nó vira `truncated` e o relatório traz `"truncated": true` |
+| Tamanho do relatório | 64.000 caracteres | `bodyShape` vira `truncated` e `"truncated": true` |
+
+**Limitações:** campos desconhecidos são ocultados, então o relatório não revela campos novos do contrato — se `unknownFields` aparecer, investigue o arquivo sanitizado localmente. Elementos além do centésimo não são inspecionados. A inspeção não detecta dados pessoais em **valores** de campos permitidos (ex.: `np`); por isso a revisão humana das fixtures antes de versioná-las continua obrigatória.

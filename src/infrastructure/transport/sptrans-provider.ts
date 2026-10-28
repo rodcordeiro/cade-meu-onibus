@@ -1,4 +1,4 @@
-import type { ArrivalPrediction, RequestContext, TransportProvider } from '../../domain/types';
+import type { ArrivalPrediction, RequestContext, TransportProvider, VehiclePosition } from '../../domain/types';
 
 const BASE = 'https://api.olhovivo.sptrans.com.br/v2.1';
 const ZONE = 'America/Sao_Paulo';
@@ -22,6 +22,13 @@ export class SptransTransportProvider implements TransportProvider {
     if (!/^\d+$/.test(stopId)) throw new Error('Código de parada inválido');
     const payload = await this.request('/Previsao/Parada?codigoParada=' + stopId);
     return parseArrivals(payload, stopId, now);
+  }
+
+  /** Consulta `Posicao/Linha` com a mesma sessão, renovação após 401 e timeout da previsão. */
+  async getVehiclePositions(lineId: string, _context: RequestContext): Promise<VehiclePosition[]> {
+    if (!/^\d+$/.test(lineId)) throw new Error('Código de linha inválido');
+    const payload = await this.request('/Posicao/Linha?codigoLinha=' + lineId);
+    return parseVehiclePositions(payload, lineId);
   }
 
   private async request(path: string): Promise<unknown> {
@@ -79,10 +86,42 @@ export class SptransTransportProvider implements TransportProvider {
   }
 }
 
-interface RawVehicle { p?: unknown; t?: unknown; ta?: unknown }
+interface RawVehicle { p?: unknown; t?: unknown; ta?: unknown; px?: unknown; py?: unknown }
 interface RawLine { cl?: unknown; sl?: unknown; vs?: unknown }
 interface RawStop { cp?: unknown; l?: unknown }
 interface RawResponse { hr?: unknown; p?: unknown }
+interface RawPositionResponse { hr?: unknown; vs?: unknown }
+
+/**
+ * Normaliza a resposta de `Posicao/Linha` (`{ hr, vs: [{ p, ta, py, px }] }`, py = latitude, px = longitude).
+ * Veículos sem prefixo, instante ou coordenadas válidos são ignorados, nunca completados.
+ */
+export function parseVehiclePositions(raw: unknown, lineId: string): VehiclePosition[] {
+  if (!raw || typeof raw !== 'object' || !Array.isArray((raw as RawPositionResponse).vs)) {
+    throw new Error('Resposta SPTrans inválida');
+  }
+  const positions: VehiclePosition[] = [];
+  for (const vehicle of (raw as RawPositionResponse).vs as unknown[]) {
+    const position = toVehiclePosition(vehicle, lineId);
+    if (position) positions.push(position);
+  }
+  return positions;
+}
+
+function toVehiclePosition(raw: unknown, lineId: string): VehiclePosition | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const { p, ta, py, px } = raw as RawVehicle;
+  if (typeof p !== 'string' || !p.trim()) return undefined;
+  if (typeof ta !== 'string') return undefined;
+  const observedAt = new Date(ta);
+  if (!Number.isFinite(observedAt.getTime())) return undefined;
+  if (!isCoordinate(py, 90) || !isCoordinate(px, 180)) return undefined;
+  return { lineId, vehicleId: p, lat: py, lon: px, observedAt };
+}
+
+function isCoordinate(value: unknown, limit: number): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= limit;
+}
 
 export function parseArrivals(raw: unknown, requestedStopId: string, now: Date): ArrivalPrediction[] {
   if (!raw || typeof raw !== 'object') throw new Error('Resposta SPTrans inválida');

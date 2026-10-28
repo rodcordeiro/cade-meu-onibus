@@ -88,4 +88,9 @@ export interface RequestContext {
 /** Porta para o provedor de previsões (SPTrans Olho Vivo no MVP). */
 export interface TransportProvider {
   getArrivals(stopId: string, context: RequestContext): Promise<ArrivalPrediction[]>;
+  /**
+   * Posições observadas dos veículos de uma linha (uma consulta por linha).
+   * Devolve só observações completas; o frescor é decidido pela política de domínio.
+   */
+  getVehiclePositions(lineId: string, context: RequestContext): Promise<VehiclePosition[]>;
 }

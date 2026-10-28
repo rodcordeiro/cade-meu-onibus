@@ -1,0 +1,39 @@
+{
+  "$comment": "EXEMPLO NÃO OPERACIONAL. Códigos e coordenadas fictícios, apenas para testes e execução local. O build recusa este arquivo como configuração operacional (\"example\": true). Veja docs/favorites.md.",
+  "version": 1,
+  "example": true,
+  "lines": [
+    {
+      "id": "1001",
+      "label": "Linha de exemplo A",
+      "aliases": ["exemplo a"],
+      "arrivalSource": "forecast"
+    },
+    {
+      "id": "1002",
+      "label": "Linha de exemplo B",
+      "aliases": ["exemplo b"],
+      "arrivalSource": "position"
+    }
+  ],
+  "stops": [
+    {
+      "id": "9001",
+      "alias": "ponto de exemplo um",
+      "lineIds": ["1001", "1002"],
+      "approaches": [
+        {
+          "lineId": "1002",
+          "references": [
+            { "name": "Referência pública de exemplo", "lat": 0, "lon": 0 }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "9002",
+      "alias": "ponto de exemplo dois",
+      "lineIds": ["1001"]
+    }
+  ]
+}

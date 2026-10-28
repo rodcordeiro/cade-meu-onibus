@@ -9,6 +9,7 @@ export class UnconfiguredTransportProvider implements TransportProvider {
     throw new Error('Provedor de transporte não configurado');
   }
 
+  /** Sem provedor configurado não há posições: falha para a linha entrar em `failedLineIds`, nunca devolve lista vazia. */
   async getVehiclePositions(): Promise<VehiclePosition[]> {
     throw new Error('Provedor de transporte não configurado');
   }

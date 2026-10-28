@@ -45,4 +45,11 @@ describe('limites de consulta', () => {
     expect((await new ArrivalService(favorites, unavailable).query({ now })).status).toBe('unavailable');
     expect((await new ArrivalService(favorites, empty).query({ now })).status).toBe('complete');
   });
+
+  it('zero associações ponto–linha não é cobertura completa (#36)', async () => {
+    const empty: TransportProvider = { getArrivals: async () => [] };
+    const result = await new ArrivalService(favorites, empty).query({ now, lineId: '999' });
+    expect(result.status).toBe('no-associations');
+    expect(result.queriedStopIds).toEqual([]);
+  });
 });

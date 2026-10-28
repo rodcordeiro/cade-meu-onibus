@@ -15,17 +15,38 @@ const provider = () =>
   });
 
 describe('ciclo de vida da skill', () => {
-  it('abrir a skill responde com a consulta geral e encerra a sessão', async () => {
-    const { speech, shouldEndSession } = await invoke({ favorites, provider: provider() }, alexaRequest({ type: 'LaunchRequest' }));
+  // #37 / SPEC-0001 história 7: após responder, a sessão fica aberta para perguntas de acompanhamento.
+  it('abrir a skill responde com a consulta geral e mantém a sessão aberta com reprompt', async () => {
+    const { speech, shouldEndSession, raw } = await invoke({ favorites, provider: provider() }, alexaRequest({ type: 'LaunchRequest' }));
 
     expect(speech).toBe('Próximo ônibus: 875A-10 no ponto da padaria em 6 minutos.');
-    expect(shouldEndSession).toBe(true);
+    expect(shouldEndSession).toBe(false);
+    expect(raw.response.reprompt).toBeDefined();
   });
 
-  it('a consulta geral encerra a sessão após responder', async () => {
-    const { shouldEndSession } = await invoke({ favorites, provider: provider() }, intentRequest('NextBusIntent'));
+  it('a consulta geral mantém a sessão aberta para acompanhamento', async () => {
+    const { shouldEndSession, raw } = await invoke({ favorites, provider: provider() }, intentRequest('NextBusIntent'));
 
-    expect(shouldEndSession).toBe(true);
+    expect(shouldEndSession).toBe(false);
+    expect(raw.response.reprompt).toBeDefined();
+  });
+
+  it('pergunta seguinte à abertura funciona na mesma sessão e stop a encerra', async () => {
+    const deps = { favorites, provider: provider() };
+    const launch = await invoke(deps, alexaRequest({ type: 'LaunchRequest' }));
+    const followup = intentRequest('NextBusByLineIntent');
+    if (followup.session === undefined || followup.request.type !== 'IntentRequest') throw new Error('envelope inválido');
+    followup.session.new = false;
+    followup.session.attributes = launch.raw.sessionAttributes ?? {};
+    followup.request.intent.slots = { line: { name: 'line', value: '875A-10', confirmationStatus: 'NONE' } };
+
+    const answer = await invoke(deps, followup);
+    expect(answer.speech).toContain('875A-10 no ponto da padaria');
+    expect(answer.shouldEndSession).toBe(false);
+
+    const stop = intentRequest('AMAZON.StopIntent');
+    if (stop.session) stop.session.new = false;
+    expect((await invoke(deps, stop)).shouldEndSession).toBe(true);
   });
 
   it('ajuda explica como perguntar e mantém a sessão aberta', async () => {

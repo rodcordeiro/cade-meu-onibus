@@ -63,6 +63,8 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
       const slots = request.intent.slots;
       const line = slots?.line?.value?.trim();
       const stop = slots?.stop?.value?.trim();
+      const attributes = input.attributesManager.getSessionAttributes();
+      const previous = input.requestEnvelope.session?.new ? {} : attributes;
       const lineResolution = line ? resolveFilter(favorites, 'line', line) : undefined;
       const stopResolution = stop ? resolveFilter(favorites, 'stop', stop) : undefined;
       for (const [dimension, resolution] of [['linha', lineResolution], ['ponto', stopResolution]] as const) {
@@ -72,12 +74,19 @@ export function createSkill({ favorites, provider, now, skillId }: SkillDependen
           : `Não reconheci ${dimension} informado. Tente um nome dos seus favoritos.`;
         return input.responseBuilder.speak(escapeSsml(message)).reprompt('Qual linha ou ponto dos seus favoritos?').getResponse();
       }
-      const result = await service.query({
-        now: now(),
-        ...(lineResolution?.kind === 'resolved' && { lineId: lineResolution.id }),
-        ...(stopResolution?.kind === 'resolved' && { stopId: stopResolution.id }),
+      const lineId = lineResolution?.kind === 'resolved' ? lineResolution.id
+        : typeof previous.lineId === 'string' ? previous.lineId : undefined;
+      const stopId = stopResolution?.kind === 'resolved' ? stopResolution.id
+        : typeof previous.stopId === 'string' ? previous.stopId : undefined;
+      // Alexa session attributes belong to this session only, never to a process-global cache.
+      input.attributesManager.setSessionAttributes({
+        ...(lineId && { lineId }),
+        ...(stopId && { stopId }),
       });
-      return input.responseBuilder.speak(escapeSsml(presenter.present(result, now()))).withShouldEndSession(true).getResponse();
+      const result = await service.query({ now: now(), ...(lineId && { lineId }), ...(stopId && { stopId }) });
+      return input.responseBuilder.speak(escapeSsml(presenter.present(result, now())))
+        .reprompt('Quer consultar outra linha ou ponto?')
+        .withShouldEndSession(false).getResponse();
     },
   };
 
